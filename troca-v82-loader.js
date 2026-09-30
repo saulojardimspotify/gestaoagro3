@@ -1,0 +1,1 @@
+(()=>{const a=document.createElement('script');a.src='troca-v81-core.js';a.onload=()=>{const b=document.createElement('script');b.src='troca-v82-fix.js';document.head.appendChild(b)};document.head.appendChild(a)})();
