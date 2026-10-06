@@ -289,6 +289,32 @@
     justify-content:center;font-weight:800;flex-shrink:0}
   .home-hint b{color:#174d78;font-size:14px}
   .home-hint .meta{font-size:12px;margin-top:3px}
+  /* V141: nova página inicial */
+  .home-sec{display:flex;align-items:center;gap:8px;margin:20px 4px 10px;font-weight:800;color:var(--verde-esc);font-size:17px;}
+  .home-sec svg.ico{width:20px;height:20px;color:var(--verde);} .home-sec .hs-mais{margin-left:auto;font-size:13px;font-weight:600;color:var(--verde);cursor:pointer;}
+  .atalhos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .atalho{background:#fff;border-radius:16px;box-shadow:var(--sombra);padding:12px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:7px;
+    font-size:11.5px;font-weight:700;color:var(--verde-esc);line-height:1.15;text-align:center;cursor:pointer;border:none;}
+  .atalho:active{transform:scale(.97);}
+  .atalho .at-ic{width:42px;height:42px;border-radius:50%;background:var(--verde-lite);color:var(--verde);display:flex;align-items:center;justify-content:center;}
+  .atalho .at-ic svg.ico{width:22px;height:22px;}
+  .reb-total{display:flex;align-items:baseline;gap:8px;} .reb-total b{font-size:34px;line-height:1;color:var(--verde-esc);font-weight:800;}
+  .reb-total span{color:var(--muted);font-size:14px;}
+  .reb-grupo{margin-top:14px;} .reb-grupo:first-of-type{margin-top:12px;}
+  .reb-tit{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;}
+  .reb-lin{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--linha);}
+  .reb-lin:last-child{border-bottom:none;} .reb-lin.rt{cursor:pointer;}
+  .reb-nome{font-size:14.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .reb-nome small{color:var(--muted);font-weight:500;}
+  .reb-n{font-weight:800;color:var(--verde-esc);font-size:15px;}
+  .reb-bar{grid-column:1/-1;height:5px;border-radius:3px;background:var(--verde-lite);overflow:hidden;}
+  .reb-bar i{display:block;height:100%;background:var(--verde);border-radius:3px;}
+  .fin-home{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .fin-home .fh{background:#fff;border-radius:14px;box-shadow:var(--sombra);padding:11px 12px;cursor:pointer;}
+  .fin-home .fh .l{font-size:12px;color:var(--muted);} .fin-home .fh .v{font-size:17px;font-weight:800;margin-top:3px;color:var(--verde-esc);}
+  .fin-home .fh.res{grid-column:1/-1;background:var(--verde-esc);} .fin-home .fh.res .l{color:#cfe5d6;} .fin-home .fh.res .v{color:#fff;font-size:22px;}
+  .fin-home .fh .v.neg{color:var(--perigo);} .fin-home .fh.res .v.neg{color:#ffb4a8;}
+  @media(max-width:380px){ .atalho{font-size:10.5px;} .atalho .at-ic{width:38px;height:38px;} }
   @media(max-width:380px){
     .home-module-head{grid-template-columns:62px 1fr 18px}
     .home-module-icon{width:62px;height:62px}
@@ -695,6 +721,7 @@ const ICONES={
   livro:'<path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v15H5.5A1.5 1.5 0 0 0 4 19.5z"/><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H19v-3M8 7h7"/>',
   celular:'<rect x="6.5" y="2.5" width="11" height="19" rx="2.2"/><path d="M11 18h2"/>',
   info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.5h.01"/>',
+  chave:'<path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3 8-8-1.3-1.3a4 4 0 0 1-5-5l2.5 2.5 2-2z"/><path d="M3 21l6-6"/>',
   cadeado:'<rect x="4.5" y="10.5" width="15" height="10.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3M12 14.5v2.5"/>'
 };
 function ico(n){const d=ICONES[n];return d?`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`:"";}
@@ -984,6 +1011,23 @@ async function telaInicio(){
   const aPagar=somaAPagar(todosLancs)
     +(await getAll("insumo_mov")).filter(m=>m.tipo==="entrada"&&!m.pago).reduce((s,m)=>s+(m.valorTotal||0),0);
 
+  // V141: valor do rebanho (custo de estoque dos ativos) — mesma regra do Financeiro › Resumo
+  const valorRebanho=ativos.reduce((s,a)=>s+(a.custoEstoque||0),0);
+  // V141: rebanho hoje por dono, propriedade e lote
+  const {marcas}=await tudo();
+  const loteDe=id=>lotes.find(l=>l.id===id);
+  const contar=(fn)=>{const m=new Map();for(const a of ativos){const k=fn(a);m.set(k,(m.get(k)||0)+1);}return m;};
+  const ordenar=arr=>arr.filter(x=>x.n>0).sort((x,y)=>y.n-x.n||String(x.nome).localeCompare(String(y.nome)));
+  const cDono=contar(a=>a.marcaId&&marcas.find(m=>m.id===a.marcaId)?a.marcaId:"__sem");
+  const porDono=ordenar([...marcas.map(m=>({nome:esc(m.sigla||m.nome||"Marca")+(m.nome&&m.sigla?` <small>· ${esc(m.nome)}</small>`:""),n:cDono.get(m.id)||0,onclick:`abrirAnimaisFiltro('marca','${m.id}')`})),
+    {nome:"Sem dono informado",n:cDono.get("__sem")||0,onclick:`abrirAnimaisFiltro('marca','__sem')`}]);
+  const cProp=contar(a=>{const l=loteDe(a.loteAtualId);return l&&propriedades.find(p=>p.id===l.propriedadeId)?l.propriedadeId:"__sem";});
+  const porProp=ordenar([...propriedades.map(p=>({nome:esc(p.nome),n:cProp.get(p.id)||0})),{nome:"Sem propriedade",n:cProp.get("__sem")||0}]);
+  const cLote=contar(a=>loteDe(a.loteAtualId)?a.loteAtualId:"__sem");
+  const porLote=ordenar([...lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);return{nome:esc(l.nome)+(p&&propriedades.length>1?` <small>· ${esc(p.nome)}</small>`:""),n:cLote.get(l.id)||0,onclick:`verLote('${l.id}')`};}),
+    {nome:"Sem lote",n:cLote.get("__sem")||0,onclick:`abrirAnimaisFiltro('lote','__sem')`}]);
+  const grupoReb=(tit,arr)=>arr.length?`<div class="reb-grupo"><div class="reb-tit">${tit}</div>${arr.map(x=>`<div class="reb-lin${x.onclick?" rt":""}" ${x.onclick?`onclick="${x.onclick}"`:""}><div class="reb-nome">${x.nome}</div><div class="reb-n">${x.n}</div><div class="reb-bar"><i style="width:${ativos.length?Math.max(3,Math.round(x.n/ativos.length*100)):0}%"></i></div></div>`).join("")}</div>`:"";
+
   // Nome do usuário
   const user=await authUser();
   let perfilLocal=null; try{perfilLocal=await getRaw("perfil","perfil");}catch(_){}
@@ -1034,45 +1078,107 @@ async function telaInicio(){
     ${avisoInstalarHome()}
     ${blocoAvisos}
 
-    <div class="home-module" onclick="abrirOperacional()">
-      <div class="home-module-head">
-        <div class="home-module-icon"><img src="boi.png" alt=""></div>
-        <div>
-          <div class="hm-title">Gestão Operacional</div>
-          <div class="hm-sub">Propriedades, lotes, animais, manejo e pastos.</div>
-        </div>
-        <div class="hm-chev">›</div>
-      </div>
-      <div class="home-stats">
-        <div class="home-stat"><div class="hs-label">🐄 Animais</div><div class="hs-value">${ativos.length}</div></div>
-        <div class="home-stat"><div class="hs-label">🏡 Propriedades</div><div class="hs-value">${propriedades.length}</div></div>
-        <div class="home-stat"><div class="hs-label">▤ Lotes</div><div class="hs-value">${lotes.length}</div></div>
-      </div>
+    <div class="home-sec">${ico("grade")}Atalhos rápidos</div>
+    <div class="atalhos">
+      <button class="atalho" onclick="atalhoTrocarPasto()"><span class="at-ic">${ico("pasto")}</span>Trocar lote de pasto</button>
+      <button class="atalho" onclick="atalhoServico()"><span class="at-ic">${ico("chave")}</span>Serviço prestado</button>
+      <button class="atalho" onclick="atalhoEstoque()"><span class="at-ic">${ico("caixa")}</span>Entrada no estoque</button>
+      <button class="atalho" onclick="formNovoAviso()"><span class="at-ic">${ico("sino")}</span>Cadastrar aviso</button>
     </div>
 
-    <div class="home-module" onclick="menuFinanceiro()">
-      <div class="home-module-head">
-        <div class="home-module-icon">💰</div>
-        <div>
-          <div class="hm-title">Gestão Financeira</div>
-          <div class="hm-sub">Lançamentos, relatórios, contas e resultados.</div>
-        </div>
-        <div class="hm-chev">›</div>
-      </div>
-      <div class="home-stats">
-        <div class="home-stat"><div class="hs-label">Resultado ${ano}</div><div class="hs-value">${homeMoney(resultado)}</div></div>
-        <div class="home-stat"><div class="hs-label">↓ A receber</div><div class="hs-value">${homeMoney(aReceber)}</div></div>
-        <div class="home-stat neg"><div class="hs-label">↗ A pagar</div><div class="hs-value">${homeMoney(aPagar)}</div></div>
-      </div>
+    <div class="home-sec">${ico("boi")}Rebanho hoje<span class="hs-mais" onclick="abrirAnimaisOperacional()">Ver animais ›</span></div>
+    <div class="card" style="cursor:default">
+      <div class="reb-total"><b>${ativos.length}</b><span>${ativos.length===1?"animal ativo":"animais ativos"}</span></div>
+      ${grupoReb("Por dono",porDono)}
+      ${grupoReb("Por propriedade",porProp)}
+      ${grupoReb("Por lote",porLote)}
     </div>
 
-    <div class="home-hint">
-      <div class="hi-icon">i</div>
-      <div>
-        <b>Escolha a área que deseja acessar</b>
-        <div class="meta">Toque em um módulo para entrar ou use o menu lateral para alternar entre as áreas.</div>
-      </div>
-    </div>`;
+    <div class="home-sec">${ico("carteira")}Financeiro ${ano}<span class="hs-mais" onclick="menuFinanceiro()">Detalhes ›</span></div>
+    <div class="fin-home">
+      <div class="fh res" onclick="menuFinanceiro()"><div class="l">Resultado líquido de ${ano}</div><div class="v ${resultado<0?"neg":""}">${homeMoney(resultado)}</div></div>
+      <div class="fh" onclick="menuFinanceiro()"><div class="l">Valor do rebanho</div><div class="v">${homeMoney(valorRebanho)}</div></div>
+      <div class="fh" onclick="menuFinanceiro()"><div class="l">A pagar</div><div class="v ${aPagar>0?"neg":""}">${homeMoney(aPagar)}</div></div>
+      <div class="fh" onclick="menuFinanceiro()"><div class="l">Receita</div><div class="v">${homeMoney(receita)}</div></div>
+      <div class="fh" onclick="menuFinanceiro()"><div class="l">Custos + despesas</div><div class="v neg">${homeMoney(despesas)}</div></div>
+    </div>
+</div>`;
+}
+/* ======================= V141: ATALHOS DA PÁGINA INICIAL ======================= */
+// Abre a lista de Animais já filtrada (ex.: por dono ou por lote)
+async function abrirAnimaisFiltro(tipo,crit){
+  if(await exigirCadastroInicial())return;
+  aba="painel";marcarNav("painel");
+  await telaAnimais();
+  const t=document.getElementById("f_tipo");if(!t)return;
+  t.value=tipo;atualizarCriterioFiltroAnimais();
+  const c=document.getElementById("f_criterio");if(c){c.value=crit;filtrarAnimais();}
+}
+// Trocar o lote de pasto: fecha o período do pasto antigo e ocupa o novo
+async function atalhoTrocarPasto(){
+  if(!(await podeUsarApp("Trocar lote de pasto")))return;
+  const {propriedades,lotes,pastos,animais}=await tudo();
+  if(!lotes.length)return alert("Cadastre um lote primeiro.");
+  if(!pastos.length)return alert("Cadastre um pasto primeiro (Gestão Operacional › Gestão de Pastos).");
+  const nomeProp=id=>(propriedades.find(p=>p.id===id)||{}).nome||"";
+  const ativosLote=id=>animais.filter(a=>a.status==="Ativo"&&a.loteAtualId===id).length;
+  const pastoDoLote=id=>pastos.find(p=>p.status==="Ocupado"&&p.loteId===id);
+  const optLote=`<option value="">— selecione —</option>`+lotes.map(l=>{const pa=pastoDoLote(l.id);
+    return`<option value="${l.id}">${esc(l.nome)} (${ativosLote(l.id)})${pa?` — hoje no ${esc(pa.nome)}`:""}</option>`;}).join("");
+  const sit=p=>p.status==="Ocupado"?`ocupado${p.loteId?` por ${esc((lotes.find(l=>l.id===p.loteId)||{}).nome||"lote")}`:""}`:(p.status==="Descanso"?"em descanso":"livre");
+  const optPasto=`<option value="">— selecione —</option>`+pastos.map(p=>`<option value="${p.id}">${esc(p.nome)}${propriedades.length>1&&nomeProp(p.propriedadeId)?` · ${esc(nomeProp(p.propriedadeId))}`:""} — ${sit(p)}</option>`).join("");
+  abrir(`<h2>Trocar lote de pasto</h2>
+    <label>Lote *</label><select id="tp_lote">${optLote}</select>
+    <label>Novo pasto *</label><select id="tp_pasto">${optPasto}</select>
+    <label>Data da troca</label><input id="tp_data" type="date" value="${hoje()}" max="${hoje()}">
+    <label>O pasto de onde o lote saiu fica</label>
+    <select id="tp_saida"><option value="Descanso">Em descanso (capim recuperando)</option><option value="Livre">Livre</option></select>
+    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
+      <button class="btn" onclick="salvarTrocaPasto()">Salvar</button></div>`);
+}
+async function salvarTrocaPasto(){
+  const loteId=val("tp_lote"),pastoId=val("tp_pasto"),data=val("tp_data")||hoje(),saida=val("tp_saida")||"Descanso";
+  if(!loteId)return alert("Selecione o lote.");
+  if(!pastoId)return alert("Selecione o novo pasto.");
+  if(data>hoje())return alert("A data da troca não pode ser no futuro.");
+  const quando=data===hoje()?Date.now():dataParaTs(data);
+  const pastos=await getAll("pastos");
+  const destino=pastos.find(p=>p.id===pastoId);if(!destino)return;
+  if(destino.status==="Ocupado"&&destino.loteId===loteId)return alert("Este lote já está nesse pasto.");
+  if(destino.status==="Ocupado"&&destino.loteId&&destino.loteId!==loteId){
+    const outro=await get("lotes",destino.loteId);
+    return alert(`O pasto ${destino.nome} está ocupado pelo lote ${outro?outro.nome:"outro"}. Troque esse lote de pasto primeiro ou escolha outro pasto.`);
+  }
+  const fechaPeriodo=(p)=>{if(!p.historico)p.historico=[];if(p.statusDesde==null)p.statusDesde=p.criadoEm||quando;
+    p.historico.push({status:p.status||"Livre",inicio:p.statusDesde,fim:quando,loteId:p.loteId||null});p.statusDesde=quando;};
+  // pasto de onde o lote sai
+  for(const p of pastos.filter(x=>x.id!==pastoId&&x.status==="Ocupado"&&x.loteId===loteId)){
+    fechaPeriodo(p);p.status=saida;p.loteId=null;await put("pastos",p);
+  }
+  fechaPeriodo(destino);destino.status="Ocupado";destino.loteId=loteId;await put("pastos",destino);
+  fechar();alert("Troca de pasto registrada.");renderSeguro();
+}
+// Serviço prestado: abre o lançamento como custo de produção · mão de obra
+async function atalhoServico(){
+  if(typeof finNovoClassificado!=="function")return formLancamento();
+  await finNovoClassificado("custo");
+  const h=document.querySelector("#md h2");if(h)h.textContent="Serviço prestado";
+  const c=document.getElementById("lc_cat");if(c&&[...c.options].some(o=>o.value==="Mão de obra"))c.value="Mão de obra";
+  const d=document.getElementById("lc_desc");if(d&&!d.value)d.placeholder="Ex: diária de vaqueiro, roçada, veterinário…";
+}
+// Entrada no estoque: escolhe o item (ou cadastra um novo) e abre a entrada
+async function atalhoEstoque(){
+  if(!(await podeUsarApp("Registrar entrada no estoque")))return;
+  const itens=(await getAll("insumos")).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
+  const grupo=(g,t)=>{const arr=itens.filter(i=>(i.grupo||"gado")===g);return arr.length?`<optgroup label="${t}">${arr.map(i=>`<option value="${i.id}">${esc(i.nome)} — saldo ${numFmt(i.saldo||0)} ${esc(i.unidade||"un")}</option>`).join("")}</optgroup>`:"";};
+  abrir(`<h2>Entrada no estoque</h2>
+    <div class="meta" style="margin-bottom:6px">Medicamentos, sal, arame, estacas e outros itens.</div>
+    ${itens.length?`<label>Item *</label><select id="ae_item"><option value="">— selecione —</option>${grupo("gado","Insumos do gado")}${grupo("manutencao","Manutenção da propriedade")}</select>
+    <button class="btn" style="margin-top:16px" onclick="if(!val('ae_item'))return alert('Selecione o item.');formEntradaInsumo(val('ae_item'))">Continuar</button>`
+    :`<div class="meta" style="margin:8px 0">Ainda não há itens cadastrados no estoque.</div>`}
+    <div class="lado" style="margin-top:10px"><button class="btn btn-sec" onclick="formNovoInsumo('gado')">+ Item do gado</button>
+      <button class="btn btn-sec" onclick="formNovoInsumo('manutencao')">+ Item de manutenção</button></div>
+    <button class="btn-fant" style="margin-top:6px" onclick="fechar()">Cancelar</button>`);
 }
 function marcarNav(a){
   document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("ativo",x.dataset.aba===a));
