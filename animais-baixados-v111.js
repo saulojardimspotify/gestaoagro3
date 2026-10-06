@@ -48,7 +48,7 @@ window.telaAnimaisBaixados=async function(){
   const sec=(titulo,arr)=>arr.length?`<div class="h3">${titulo} <span class="meta">(${arr.length})</span></div>${cards(arr)}`:'';
 
   $t.innerHTML=`
-    <button class="voltar" onclick="telaAnimais()">‹ Animais ativos</button>
+    <button class="voltar" data-lista="baixados" onclick="telaAnimais()">‹ Animais ativos</button>
     <div class="sechead"><span class="sic">↩️</span><h2>Animais vendidos / baixados</h2></div>
     <div class="card" style="background:var(--verde-lite);box-shadow:none">
       <div class="ti">${baixados.length} animal(is) fora do rebanho ativo</div>
