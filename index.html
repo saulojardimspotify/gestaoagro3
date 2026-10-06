@@ -649,6 +649,65 @@ const DESPESA_DE_INSUMO={gado:"Sanidade (vacina/remédio)",manutencao:"Manutenç
 const MESES_ABREV=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 const TIPOS_MED=["Vacina","Antibiótico","Vermífugo","Anti-inflamatório","Carrapaticida/Mosquicida","Vitamina/Mineral","Hormônio","Outro"];
 const optTipoMed=sel=>TIPOS_MED.map(t=>`<option value="${t}" ${t===sel?"selected":""}>${t}</option>`).join("");
+/* V142: medicamentos e vacinas passam a ser itens do Estoque de Insumos (grupo "Insumos do gado") */
+const CAT_MED_ESTOQUE=["Medicamento","Vacina","Vermífugo","Vitamina","Hormônio"];
+const TIPOS_MEDICAMENTO=["Antibiótico","Anti-inflamatório","Carrapaticida/Mosquicida","Outro"];
+const ehMedicamentoEstoque=i=>!!i&&(i.grupo||"gado")==="gado"&&CAT_MED_ESTOQUE.includes(i.categoria);
+// Exemplos e unidade sugerida para cada categoria do estoque
+const EXEMPLO_INSUMO={
+  "Medicamento":["Ex: Terramicina LA, Ivermectina 1%","mL"],
+  "Vacina":["Ex: Brucelose B19, Polivalente clostridioses","dose"],
+  "Vermífugo":["Ex: Albendazol 10%, Doramectina","mL"],
+  "Vitamina":["Ex: ADE injetável, Modificador orgânico","mL"],
+  "Hormônio":["Ex: Benzoato de estradiol, Implante de progesterona","dose"],
+  "Sal mineral":["Ex: Sal mineral 80, Sal proteinado","saco"],
+  "Suplemento":["Ex: Proteinado das águas, Ração de cocho","saco"],
+  "Cerca (arame/estaca)":["Ex: Arame farpado 500 m, Estaca de eucalipto","un"],
+  "Combustível":["Ex: Diesel S10, Gasolina","L"],
+  "Óleo/lubrificante":["Ex: Óleo 2 tempos, Graxa","L"],
+  "Ferramenta/peça":["Ex: Lâmina de roçadeira, Correia do trator","un"],
+  "Material de construção":["Ex: Cimento 50 kg, Tábua para curral","un"]
+};
+function exemploInsumo(g,cat){const e=EXEMPLO_INSUMO[cat];if(e)return e;return g==="manutencao"?["Ex: Lona, Mangueira, Cadeado","un"]:["Ex: Brinco de identificação, Agulhas","un"];}
+async function listaMedicamentos(){
+  return (await getAll("insumos")).filter(ehMedicamentoEstoque).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
+}
+const optMedicamentos=(meds,sel)=>meds.map(m=>`<option value="${m.id}" ${m.id===sel?"selected":""}>${esc(m.nome)}${m.marca?` · ${esc(m.marca)}`:""} — estoque ${numFmt(m.saldo||0)} ${esc(m.unidade||"un")}</option>`).join("");
+function semMedicamentoHtml(titulo){
+  return `<h2>${titulo}</h2>
+    <div class="meta">Nenhum medicamento ou vacina no estoque ainda. Cadastre o produto no Estoque de Insumos para registrar a aplicação.</div>
+    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
+      <button class="btn" onclick="formNovoInsumo('gado',null,'Medicamento')">Cadastrar no estoque</button></div>`;
+}
+// Migração: cada medicamento antigo vira item do estoque (mesmo id, para o histórico continuar ligado)
+async function migrarMedicamentosParaEstoque(){
+  try{
+    const meds=await getAll("medicamentos");if(!meds.length)return;
+    const insumos=await getAll("insumos");
+    const catDe=t=>({"Vacina":"Vacina","Vermífugo":"Vermífugo","Vitamina/Mineral":"Vitamina","Hormônio":"Hormônio"})[t]||"Medicamento";
+    const chave=x=>String(x||"").trim().toLowerCase();
+    let eventos=null;
+    for(const m of meds){
+      if(insumos.some(i=>i.id===m.id||(i.medicamentosOrigem||[]).includes(m.id)))continue;
+      const igual=insumos.find(i=>(i.grupo||"gado")==="gado"&&chave(i.nome)===chave(m.nome));
+      if(igual){ // já existe no estoque com o mesmo nome: junta os dados e religa o histórico
+        igual.fabricante=igual.fabricante||m.fabricante||"";igual.marca=igual.marca||m.marca||"";
+        igual.obs=igual.obs||m.obs||"";if(!CAT_MED_ESTOQUE.includes(igual.categoria))igual.categoria=catDe(m.tipo);
+        if(igual.categoria==="Medicamento"&&!igual.tipoMed&&TIPOS_MEDICAMENTO.includes(m.tipo))igual.tipoMed=m.tipo;
+        igual.medicamentosOrigem=[...(igual.medicamentosOrigem||[]),m.id];
+        await put("insumos",igual);
+        eventos=eventos||await getAll("eventos");
+        for(const e of eventos.filter(e=>e.medicamentoId===m.id)){e.medicamentoId=igual.id;await put("eventos",e);}
+      }else{
+        const cat=catDe(m.tipo);
+        const novo={id:m.id,nome:m.nome||"Medicamento",grupo:"gado",categoria:cat,unidade:cat==="Vacina"||cat==="Hormônio"?"dose":"mL",
+          saldo:0,custoMedio:0,fabricante:m.fabricante||"",marca:m.marca||"",obs:m.obs||"",
+          tipoMed:cat==="Medicamento"&&TIPOS_MEDICAMENTO.includes(m.tipo)?m.tipo:"",criadoEm:Date.now(),migradoDeMedicamento:true};
+        await put("insumos",novo);insumos.push(novo);
+      }
+    }
+  }catch(e){console.error("Migração de medicamentos V142:",e);}
+}
 const svgMacho=`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2f7bef" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="14.5" r="6"/><line x1="13.8" y1="10.2" x2="20" y2="4"/><polyline points="14.5 4 20 4 20 9.5"/></svg>`;
 const svgFemea=`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#e24fa0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><line x1="12" y1="15" x2="12" y2="22"/><line x1="8.5" y1="18.5" x2="15.5" y2="18.5"/></svg>`;
 const sexoChip=s=>s==="F"?`<span class="chip chip-f">${svgFemea}</span>`:`<span class="chip chip-m">${svgMacho}</span>`;
@@ -656,8 +715,10 @@ const COW=`<svg class="cattle" viewBox="0 0 640 512" xmlns="http://www.w3.org/20
 
 /* Carrega tudo de uma vez e monta em memória */
 async function tudo(){
-  const [propriedades,marcas,lotes,animais,eventos,medicamentos,pastos,grupos,grupo_animais]=await Promise.all(
-    ["propriedades","marcas","lotes","animais","eventos","medicamentos","pastos","grupos","grupo_animais"].map(getAll));
+  const [propriedades,marcas,lotes,animais,eventos,insumosTodos,pastos,grupos,grupo_animais]=await Promise.all(
+    ["propriedades","marcas","lotes","animais","eventos","insumos","pastos","grupos","grupo_animais"].map(getAll));
+  // V142: medicamentos e vacinas = itens do estoque (Insumos do gado)
+  const medicamentos=insumosTodos.filter(ehMedicamentoEstoque).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
   _animaisPorId=new Map(animais.map(a=>[a.id,a])); // V125
   return {propriedades,marcas,lotes,animais,eventos,medicamentos,pastos,grupos,grupo_animais};
 }
@@ -2076,7 +2137,6 @@ async function telaPerfil(){
     <button class="btn btn-sec" onclick="telaInstalar()">📲 ${appInstalado()?"App instalado · compartilhar link":"Instalar o app no celular"}</button>
     <div class="sechead"><h2 style="font-size:16px">Cadastros</h2></div>
     <button class="btn btn-sec" onclick="gerenciarMarcas()">🏷 Marcas / donos (${marcas.length})</button>
-    <button class="btn btn-sec" onclick="gerenciarMedicamentos()">💊 Medicamentos (${medicamentos.length})</button>
     <button class="btn btn-sec" onclick="formNovaPropriedade()">🏡 Nova propriedade</button>
     <div class="sechead" style="margin-top:18px"><h2 style="font-size:16px">Nuvem e backup</h2></div>
     <div id="cloudAccountBox"><div class="cloud-card"><div class="meta">Verificando sua conta…</div></div></div>
@@ -2473,7 +2533,7 @@ async function sincronizarAgora({silencioso=false}={}){
 
     const push=await pushPendentes(org,user,device);
     const pull=await pullCloud(org);
-    await numerarSemCodigo(); // V133: animais antigos que chegaram de outro aparelho
+    await numerarSemCodigo(); await migrarMedicamentosParaEstoque(); // V133/V142: animais antigos que chegaram de outro aparelho
 
     const meta=await garantirSyncMeta();
     meta.last_sync_at=agoraISO();
@@ -2804,7 +2864,6 @@ async function menuAdicionar(){if(!(await podeUsarApp("Adicionar dados")))return
   <div class="sheet-item rt" onclick="fechar();formNovoAnimal(null,true)"><span class="si">🍼</span>Registrar nascimento</div>
   <div class="sheet-item rt" onclick="fechar();formSaida()"><span class="si">↩</span>Saída de animal (morte/venda)</div>
   <div class="sheet-item rt" onclick="fechar();formNovoAviso()"><span class="si">🔔</span>Cadastrar aviso</div>
-  <div class="sheet-item rt" onclick="fechar();gerenciarMedicamentos()"><span class="si">💊</span>Cadastrar medicamento</div>
   <div class="sheet-item rt" onclick="fechar();gerenciarMarcas()"><span class="si">🏷</span>Marcas / donos</div>
   <div class="sheet-item rt" onclick="fechar();formNovoLote()"><span class="si">▤</span>Novo lote</div>
   <div class="sheet-item rt" onclick="fechar();formNovoGrupo()"><span class="si">👥</span>Novo grupo de animais</div>
@@ -3140,27 +3199,49 @@ async function histEstoque(insumos,movs){
   });
   return arr.length?verMais(arr,"movimento(s)"):`<div class="meta" style="padding:2px 4px 8px">Sem movimentos ainda.</div>`;
 }
-async function formNovoInsumo(grupo,editId){
+async function formNovoInsumo(grupo,editId,catPadrao){
   const ed=editId?await get("insumos",editId):null;
   const g=ed?ed.grupo:(grupo||"gado");
   const cats=catsDoGrupo(g);
-  const optCat=cats.map(c=>`<option value="${esc(c)}" ${ed&&ed.categoria===c?"selected":""}>${c}</option>`).join("");
-  const optUn=UNID_INSUMO.map(u=>`<option value="${u}" ${ed&&ed.unidade===u?"selected":""}>${u}</option>`).join("");
+  const catAtual=ed?ed.categoria:(catPadrao&&cats.includes(catPadrao)?catPadrao:cats[0]);
+  const [exemplo,unSug]=exemploInsumo(g,catAtual);
+  const unAtual=ed?ed.unidade:unSug;
+  const optCat=cats.map(c=>`<option value="${esc(c)}" ${c===catAtual?"selected":""}>${c}</option>`).join("");
+  const optUn=UNID_INSUMO.map(u=>`<option value="${u}" ${u===unAtual?"selected":""}>${u}</option>`).join("");
+  const med=g==="gado"&&CAT_MED_ESTOQUE.includes(catAtual);
   abrir(`<h2>${ed?"Editar item":"Novo item de estoque"}</h2>
     <label>Grupo</label><input value="${g==="manutencao"?"Manutenção da propriedade":"Insumos do gado"}" disabled>
     <input type="hidden" id="in_grupo" value="${g}">
-    <label>Nome *</label><input id="in_nome" value="${ed?esc(ed.nome||""):""}" placeholder="Ex: Ivermectina 1% / Arame farpado">
-    <label>Categoria</label><select id="in_cat">${optCat}</select>
+    <label>Categoria</label><select id="in_cat" onchange="trocarCategoriaInsumo(${ed?"true":"false"})">${optCat}</select>
+    <label>Nome *</label><input id="in_nome" value="${ed?esc(ed.nome||""):""}" placeholder="${esc(exemplo)}">
+    <div id="in_grp_med" style="display:${med?"block":"none"}">
+      <div id="in_grp_tipo" style="display:${catAtual==="Medicamento"?"block":"none"}"><label>Tipo de medicamento</label>
+        <select id="in_tipomed"><option value="">— selecione —</option>${TIPOS_MEDICAMENTO.map(t=>`<option value="${t}" ${ed&&ed.tipoMed===t?"selected":""}>${t}</option>`).join("")}</select></div>
+      <label>Fabricante</label><input id="in_fab" value="${ed?esc(ed.fabricante||""):""}" placeholder="Ex: Zoetis, MSD, Ourofino">
+      <label>Marca comercial</label><input id="in_marca" value="${ed?esc(ed.marca||""):""}" placeholder="Ex: Ivomec Gold">
+      <label>Observação</label><input id="in_obs" value="${ed?esc(ed.obs||""):""}" placeholder="Ex: carência de 35 dias, guardar na geladeira">
+    </div>
     <label>Unidade</label><select id="in_un">${optUn}</select>
     <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
       <button class="btn" onclick="salvarInsumo(${ed?`'${ed.id}'`:""})">Salvar</button></div>`);
+}
+function trocarCategoriaInsumo(editando){
+  const g=val("in_grupo")||"gado",cat=val("in_cat");
+  const [exemplo,unSug]=exemploInsumo(g,cat);
+  const n=document.getElementById("in_nome");if(n)n.placeholder=exemplo;
+  if(!editando){const u=document.getElementById("in_un");if(u)u.value=unSug;}
+  const med=g==="gado"&&CAT_MED_ESTOQUE.includes(cat);
+  const gm=document.getElementById("in_grp_med");if(gm)gm.style.display=med?"block":"none";
+  const gt=document.getElementById("in_grp_tipo");if(gt)gt.style.display=cat==="Medicamento"?"block":"none";
 }
 async function formEditarInsumo(id){formNovoInsumo(null,id);}
 async function salvarInsumo(id){
   const nome=val("in_nome"); if(!nome)return alert("Dê um nome ao item.");
   const grupo=val("in_grupo")||"gado", categoria=val("in_cat"), unidade=val("in_un");
-  if(id){const it=await get("insumos",id);if(it){it.nome=nome;it.categoria=categoria;it.unidade=unidade;await put("insumos",it);}}
-  else await put("insumos",{id:uid(),nome,grupo,categoria,unidade,saldo:0,custoMedio:0,criadoEm:Date.now()});
+  const med=grupo==="gado"&&CAT_MED_ESTOQUE.includes(categoria);
+  const extra=med?{tipoMed:categoria==="Medicamento"?val("in_tipomed"):"",fabricante:val("in_fab"),marca:val("in_marca"),obs:val("in_obs")}:{};
+  if(id){const it=await get("insumos",id);if(it){it.nome=nome;it.categoria=categoria;it.unidade=unidade;Object.assign(it,extra);await put("insumos",it);}}
+  else await put("insumos",{id:uid(),nome,grupo,categoria,unidade,saldo:0,custoMedio:0,...extra,criadoEm:Date.now()});
   fechar();telaEstoque();
 }
 async function excluirInsumo(id){
@@ -3759,16 +3840,10 @@ async function salvarEdicaoAnimal(id){
 
 async function formMedicarLote(loteId){
   const l=await get("lotes",loteId);
-  const medicamentos=await getAll("medicamentos");
+  const medicamentos=await listaMedicamentos();
   const ativos=(await getAll("animais")).filter(a=>a.loteAtualId===loteId&&a.status==="Ativo").length;
-  if(!medicamentos.length){
-    abrir(`<h2>💊 Medicamento no lote</h2>
-      <div class="meta">Nenhum medicamento cadastrado ainda. Cadastre o primeiro para registrar a aplicação.</div>
-      <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
-        <button class="btn" onclick="gerenciarMedicamentos()">Cadastrar medicamento</button></div>`);
-    return;
-  }
-  const optMed=medicamentos.map(m=>`<option value="${m.id}">${esc(m.nome)}${m.marca?` · ${esc(m.marca)}`:""}</option>`).join("");
+  if(!medicamentos.length)return abrir(semMedicamentoHtml("💊 Medicamento no lote"));
+  const optMed=`<option value="">— selecione —</option>`+optMedicamentos(medicamentos);
   const optVia=VIAS.map(v=>`<option value="${v}">${v}</option>`).join("");
   abrir(`<h2>💊 Medicamento no lote inteiro</h2>
     <div class="meta" style="margin-bottom:6px">Lote: <b>${esc(l.nome)}</b> · aplica em <b>${ativos}</b> animal(is) ativo(s).</div>
@@ -3786,7 +3861,7 @@ async function salvarMedicarLote(loteId){
   const via=val("ml_via"),dose=val("ml_dose"),data=val("ml_data"),hora=val("ml_hora");
   const ativos=(await getAll("animais")).filter(a=>a.loteAtualId===loteId&&a.status==="Ativo");
   for(const a of ativos)await registrarEvento(a.id,"Medicamento",data,"",{hora,medicamentoId:medId,via,dose});
-  const nome=(await get("medicamentos",medId)||{}).nome||"Medicamento";
+  const nome=(await get("insumos",medId)||{}).nome||"Medicamento";
   fechar();verLote(loteId);alert(`"${nome}" registrado em ${ativos.length} animal(is).`);
 }
 
@@ -3870,24 +3945,35 @@ async function telaMedicamentosManejo(){
   if(!(await podeUsarApp("Acessar medicamentos e vacinação")))return;
   topoPagina();
   const {propriedades,lotes,animais,medicamentos,eventos}=await tudo();
+  const insumos=await getAll("insumos");
   const ativos=animais.filter(a=>a.status==="Ativo").sort((x,y)=>(x.codigo||0)-(y.codigo||0));
   const nomeLote=id=>(lotes.find(l=>l.id===id)||{}).nome||"—";
   const optAnimais=ativos.map(a=>`<option value="${a.id}">${esc(rotuloCod(a))} — ${esc(nomeLote(a.loteAtualId))}</option>`).join("");
   const optLotes=lotes.length?`<option value="">— selecione —</option>`+lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);return `<option value="${l.id}">${esc(l.nome)}${p?` — ${esc(p.nome)}`:""}</option>`;}).join(""):"";
-  const optMed=medicamentos.map(m=>`<option value="${m.id}">${esc(m.nome)}${m.marca?` · ${esc(m.marca)}`:""}</option>`).join("");
-  const listaMeds=medicamentos.map(m=>`<div class="sheet-item" style="padding-left:0;padding-right:0">
-    <span class="si">💊</span><div style="flex:1"><b>${esc(m.nome)}</b>${m.marca?` · ${esc(m.marca)}`:""}
-    ${(m.tipo||m.fabricante)?`<div class="meta">${[m.tipo,m.fabricante].filter(Boolean).map(esc).join(" · ")}</div>`:""}</div>
-    <button class="btn-fant" style="padding:4px 8px;color:var(--verde)" onclick="formEditarMedicamento('${m.id}')">✎</button>
-    <button class="btn-fant" style="padding:4px 8px;color:var(--perigo)" onclick="excluirMedicamentoPagina('${m.id}')">✕</button></div>`).join("") || `<div class="meta">Nenhum medicamento cadastrado ainda.</div>`;
-  const aplicacoes=eventos.filter(e=>e.tipo==="Medicamento").sort((a,b)=>(b.data||"").localeCompare(a.data||"")||(b.hora||"").localeCompare(a.hora||"")).slice(0,8);
-  const nomeAnimal=id=>{const a=animais.find(x=>x.id===id);return a?rotuloCod(a):"Animal não encontrado";};
-  const nomeMed=id=>(medicamentos.find(m=>m.id===id)||{}).nome||"Medicamento não informado";
-  const hist=aplicacoes.map(e=>`<div class="manejo-reg"><div class="mr-top"><div class="mr-title">${esc(nomeMed(e.medicamentoId))}</div><div class="mr-date">${fmt(e.data)}${e.hora?` · ${esc(e.hora)}`:""}</div></div><div class="mr-meta">${esc(nomeAnimal(e.animalId))}${e.via?` · ${esc(e.via)}`:""}${e.dose?` · ${esc(e.dose)}`:""}${e.detalhes?`<br>${esc(e.detalhes)}`:""}</div></div>`).join("");
+  const optMed=medicamentos.length?`<option value="">— selecione —</option>`+optMedicamentos(medicamentos):"";
+  // V142: histórico de aplicações — uma linha por aplicação (mesmo produto, data, hora, via, dose e observação)
+  const nomeMed=id=>{const m=insumos.find(x=>x.id===id);return m?m.nome+(m.marca?` · ${m.marca}`:""):"Medicamento não informado";};
+  const animalPorId=new Map(animais.map(a=>[a.id,a]));
+  const grupos=new Map();
+  for(const e of eventos.filter(e=>e.tipo==="Medicamento")){
+    const k=[e.data||"",e.hora||"",e.medicamentoId||"",e.via||"",e.dose||"",e.detalhes||""].join("|");
+    if(!grupos.has(k))grupos.set(k,{e,ids:[]});
+    grupos.get(k).ids.push(e.animalId);
+  }
+  const regs=[...grupos.values()].sort((a,b)=>(b.e.data||"").localeCompare(a.e.data||"")||(b.e.hora||"").localeCompare(a.e.hora||""));
+  const quem=ids=>{
+    const an=ids.map(id=>animalPorId.get(id)).filter(Boolean);
+    if(an.length<=3)return an.map(a=>esc(rotuloCod(a))).join(", ")||"Animal não encontrado";
+    const lotesN=[...new Set(an.map(a=>nomeLote(a.loteAtualId)))];
+    return `<b>${an.length} animais</b>${lotesN.length<=2?` · ${lotesN.map(esc).join(", ")}`:""}`;
+  };
+  const itensHist=regs.map(({e,ids})=>`<div class="manejo-reg"><div class="mr-top"><div class="mr-title">${esc(nomeMed(e.medicamentoId))}</div><div class="mr-date">${fmt(e.data)}${e.hora?` · ${esc(e.hora)}`:""}</div></div>
+    <div class="mr-meta">${quem(ids)}${e.via||e.dose?`<br>${[e.via,e.dose].filter(Boolean).map(esc).join(" · ")}`:""}${e.detalhes?`<br>${esc(e.detalhes)}`:""}</div></div>`);
+  const totalAnimais=regs.reduce((s,r)=>s+r.ids.length,0);
 
   $t.innerHTML=`<button class="voltar" onclick="telaManejo()">‹ Manejo</button>
     <div class="sechead"><span class="sic">💊</span><h2>Medicamentos e Vacinação</h2></div>
-    <div class="meta" style="margin:0 4px 14px">Escolha o que deseja fazer. O formulário só será aberto depois que você selecionar uma opção.</div>
+    <div class="meta" style="margin:0 4px 14px">Registre as aplicações e consulte o que já foi aplicado. Os medicamentos e vacinas são cadastrados no <a href="#" onclick="event.preventDefault();gerenciarMedicamentos()" style="color:var(--verde);font-weight:600">Estoque de Insumos</a>.</div>
 
     <div class="med-acoes">
       <button type="button" class="med-acao-btn" onclick="alternarPainelMedicamentos('aplicacao')">
@@ -3895,55 +3981,40 @@ async function telaMedicamentosManejo(){
         <span class="med-acao-conteudo"><strong>Registrar aplicação</strong><small>Aplicar medicamento ou vacina</small></span>
         <span class="med-acao-seta">›</span>
       </button>
-      <button type="button" class="med-acao-btn" onclick="alternarPainelMedicamentos('cadastro')">
-        <span class="med-acao-ico">💊</span>
-        <span class="med-acao-conteudo"><strong>Medicamentos cadastrados</strong><small>Consultar ou cadastrar medicamentos</small></span>
-        <span class="med-acao-seta">›</span>
-      </button>
     </div>
 
     <div id="mp_painel_aplicacao" class="card" style="display:none;padding:18px;margin-bottom:18px">
       <div class="h3" style="margin:0 0 10px">Registrar aplicação</div>
+      ${medicamentos.length?`
       <label>Aplicar em *</label>
       <select id="mp_alvo" onchange="toggleAlvoMedicamentoPagina()">
         <option value="animal">Um animal específico</option>
         <option value="lote">Lote inteiro</option>
       </select>
-      <div id="mp_grp_animal"><label>Animal *</label><select id="mp_animal">${optAnimais||`<option value="">— nenhum animal ativo —</option>`}</select></div>
+      <div id="mp_grp_animal"><label>Animal *</label><select id="mp_animal">${optAnimais?`<option value="">— selecione —</option>${optAnimais}`:`<option value="">— nenhum animal ativo —</option>`}</select></div>
       <div id="mp_grp_lote" style="display:none"><label>Lote *</label><select id="mp_lote">${optLotes||`<option value="">— nenhum lote —</option>`}</select></div>
       <label>Medicamento / vacina *</label>
-      <select id="mp_med">${optMed||`<option value="">— nenhum medicamento cadastrado —</option>`}</select>
-      ${!medicamentos.length?`<div class="meta" style="margin-top:8px">Cadastre primeiro um medicamento na opção “Medicamentos cadastrados”.</div>`:""}
+      <select id="mp_med">${optMed}</select>
       <label>Data e hora</label>
-      <div class="lado"><input id="mp_data" type="date" value="${hoje()}"><input id="mp_hora" type="time" value="${horaAgora()}"></div>
+      <div class="lado"><input id="mp_data" type="date" value="${hoje()}" max="${hoje()}"><input id="mp_hora" type="time" value="${horaAgora()}"></div>
       <label>Via de aplicação</label><select id="mp_via">${VIAS.map(v=>`<option value="${v}">${v}</option>`).join("")}</select>
-      <label>Dose (opcional)</label><input id="mp_dose" placeholder="Ex: 5 ml">
-      <label>Informações adicionais (opcional)</label><textarea id="mp_obs" rows="3" placeholder="Ex: reforço, lote do produto, observações da aplicação…"></textarea>
-      <button class="btn" style="margin-top:16px" onclick="salvarMedicamentoManejoPagina()">Registrar aplicação</button>
+      <label>Dose (opcional)</label><input id="mp_dose" placeholder="Ex: 5 mL, 1 dose, 2 mL/50 kg">
+      <label>Informações adicionais (opcional)</label><textarea id="mp_obs" rows="3" placeholder="Ex: reforço, lote/validade do frasco, quem aplicou…"></textarea>
+      <button class="btn" style="margin-top:16px" onclick="salvarMedicamentoManejoPagina()">Registrar aplicação</button>`
+      :`<div class="meta">Nenhum medicamento ou vacina no estoque ainda. Cadastre o produto no Estoque de Insumos para registrar a aplicação.</div>
+      <button class="btn" style="margin-top:14px" onclick="formNovoInsumo('gado',null,'Medicamento')">Cadastrar no estoque</button>`}
     </div>
 
-    <div id="mp_painel_cadastro" class="card" style="display:none;padding:18px;margin-bottom:18px">
-      <div class="h3" style="margin:0 0 6px">Medicamentos cadastrados</div>
-      ${listaMeds}
-      <div class="h3" style="margin:18px 0 8px">Cadastrar novo medicamento</div>
-      <label>Nome *</label><input id="mp_novo_nome" placeholder="Ex: Ivomec">
-      <label>Tipo</label><select id="mp_novo_tipo">${optTipoMed()}</select>
-      <label>Fabricante</label><input id="mp_novo_fab" placeholder="Ex: Boehringer">
-      <label>Marca comercial</label><input id="mp_novo_marca" placeholder="Ex: Ivomec Gold">
-      <label>Observação</label><input id="mp_novo_obs" placeholder="Opcional">
-      <button class="btn btn-sec" style="margin-top:14px" onclick="salvarMedicamentoPagina()">+ Cadastrar medicamento</button>
-    </div>
-
-    ${hist?`<div class="card" style="padding:18px;margin-bottom:18px"><div class="h3" style="margin:0 0 8px">Aplicações recentes</div>${hist}</div>`:""}`;
+    <div class="card" style="padding:18px;margin-bottom:18px;cursor:default">
+      <div class="h3" style="margin:0 0 4px">Histórico de aplicações</div>
+      <div class="meta" style="margin-bottom:8px">${regs.length?`${regs.length} aplicação(ões) · ${totalAnimais} dose(s) em animais`:"Nenhuma aplicação registrada ainda."}</div>
+      ${verMais(itensHist,"aplicação(ões)")}
+    </div>`;
 }
 function alternarPainelMedicamentos(painel){
-  const aplicacao=document.getElementById("mp_painel_aplicacao");
-  const cadastro=document.getElementById("mp_painel_cadastro");
-  if(!aplicacao||!cadastro)return;
-  const alvo=painel==="aplicacao"?aplicacao:cadastro;
-  const outro=painel==="aplicacao"?cadastro:aplicacao;
+  const alvo=document.getElementById("mp_painel_aplicacao");
+  if(!alvo)return;
   const abrir=alvo.style.display==="none";
-  outro.style.display="none";
   alvo.style.display=abrir?"block":"none";
   if(abrir)setTimeout(()=>alvo.scrollIntoView({behavior:"smooth",block:"start"}),50);
 }
@@ -3955,7 +4026,7 @@ function toggleAlvoMedicamentoPagina(){
 }
 async function salvarMedicamentoManejoPagina(){
   const medId=(document.getElementById("mp_med")||{}).value;
-  if(!medId)return alert("Cadastre e selecione o medicamento ou vacina.");
+  if(!medId)return alert("Selecione o medicamento ou vacina.");
   const alvo=(document.getElementById("mp_alvo")||{}).value||"animal";
   const todos=await getAll("animais");
   let lista=[];
@@ -3970,21 +4041,9 @@ async function salvarMedicamentoManejoPagina(){
     if(!lista.length)return alert("Esse lote não tem animais ativos.");
   }
   const data=val("mp_data"),hora=val("mp_hora"),via=val("mp_via"),dose=val("mp_dose"),obs=val("mp_obs");
+  if(data>hoje())return alert("A data da aplicação não pode ser no futuro.");
   for(const id of lista)await registrarEvento(id,"Medicamento",data,obs,{hora,medicamentoId:medId,via,dose});
   alert(`Aplicação registrada em ${lista.length} animal(is).`);
-  telaMedicamentosManejo();
-}
-async function salvarMedicamentoPagina(){
-  const nome=val("mp_novo_nome");
-  if(!nome)return alert("Informe o nome do medicamento.");
-  await put("medicamentos",{id:uid(),nome,tipo:val("mp_novo_tipo"),fabricante:val("mp_novo_fab"),marca:val("mp_novo_marca"),obs:val("mp_novo_obs")});
-  alert("Medicamento cadastrado com sucesso.");
-  telaMedicamentosManejo();
-}
-async function excluirMedicamentoPagina(id){
-  const m=await get("medicamentos",id);
-  if(!confirm(`Excluir o medicamento "${m?m.nome:""}"?`))return;
-  await del("medicamentos",id);
   telaMedicamentosManejo();
 }
 
@@ -4088,9 +4147,9 @@ async function formManejo(tipo){
   let especifico="";
   if(tipo==="Medicamento"){
     const optMed=medicamentos.length
-      ? medicamentos.map(m=>`<option value="${m.id}">${esc(m.nome)}${m.marca?` · ${esc(m.marca)}`:""}</option>`).join("")
-      : `<option value="">— nenhum cadastrado —</option>`;
-    especifico=`<label>Medicamento${medicamentos.length?"":" (cadastre em + → Cadastrar medicamento)"}</label>
+      ? `<option value="">— selecione —</option>`+optMedicamentos(medicamentos)
+      : `<option value="">— nenhum no estoque —</option>`;
+    especifico=`<label>Medicamento${medicamentos.length?"":" (cadastre no Estoque de Insumos)"}</label>
       <select id="mj_med">${optMed}</select>
       <label>Via de aplicação</label><select id="mj_via">${VIAS.map(v=>`<option value="${v}">${v}</option>`).join("")}</select>
       <label>Dose (opcional)</label><input id="mj_dose" placeholder="Ex: 5 ml">
@@ -4204,6 +4263,7 @@ async function salvarManejo(tipo){
     for(const id of lista){await registrarEvento(id,"Marcação",data,obs,{hora});n++;}
   }else if(tipo==="Medicamento"){
     const medId=(document.getElementById("mj_med")||{}).value||null;
+    if(!medId)return alert("Selecione o medicamento ou vacina.");
     const via=val("mj_via"), dose=val("mj_dose"), obs=val("mj_obs");
     for(const id of lista){await registrarEvento(id,"Medicamento",data,obs,{hora,medicamentoId:medId,via,dose});n++;}
   }else if(tipo==="Outros"){
@@ -4223,10 +4283,11 @@ async function salvarManejo(tipo){
 async function editarGrupoManejo(tipo,idsCsv){
   const ids=idsCsv.split(",");
   const ev=await get("eventos",ids[0]); if(!ev){telaManejo();return;}
-  const medicamentos=await getAll("medicamentos");
+  const medicamentos=await listaMedicamentos();
+  if(ev.medicamentoId&&!medicamentos.some(m=>m.id===ev.medicamentoId)){const x=await get("insumos",ev.medicamentoId);if(x)medicamentos.unshift(x);}
   let campos="";
   if(tipo==="Medicamento"){
-    const optMed=(medicamentos.map(m=>`<option value="${m.id}" ${ev.medicamentoId===m.id?"selected":""}>${esc(m.nome)}${m.marca?` · ${esc(m.marca)}`:""}</option>`).join(""))||`<option value="">— nenhum —</option>`;
+    const optMed=optMedicamentos(medicamentos,ev.medicamentoId)||`<option value="">— nenhum —</option>`;
     campos=`<label>Medicamento</label><select id="em_med">${optMed}</select>
       <label>Via de aplicação</label><select id="em_via">${VIAS.map(v=>`<option value="${v}" ${ev.via===v?"selected":""}>${v}</option>`).join("")}</select>
       <label>Dose (opcional)</label><input id="em_dose" value="${esc(ev.dose||"")}">
@@ -4265,64 +4326,17 @@ async function excluirGrupoManejo(tipo,idsCsv){
   telaManejo();
 }
 
-/* ---------- Cadastro de medicamentos ---------- */
-async function gerenciarMedicamentos(){
-  if(!(await podeUsarApp("Gerenciar medicamentos")))return;
-  const meds=await getAll("medicamentos");
-  let lst=meds.map(m=>`<div class="sheet-item"><span class="si">💊</span>
-    <div style="flex:1"><b>${esc(m.nome)}</b>${m.marca?` · ${esc(m.marca)}`:""}
-      ${(m.tipo||m.fabricante)?`<div class="meta">${[m.tipo,m.fabricante].filter(Boolean).map(esc).join(" · ")}</div>`:""}</div>
-    <button class="btn-fant" style="padding:4px 8px;color:var(--verde)" onclick="formEditarMedicamento('${m.id}')">✎</button>
-    <button class="btn-fant" style="padding:4px 8px;color:var(--perigo)" onclick="excluirMedicamento('${m.id}')">✕</button></div>`).join("")||`<div class="meta">Nenhum medicamento cadastrado ainda.</div>`;
-  abrir(`<h2>Medicamentos</h2>${lst}
-    <div class="h3" style="margin-left:0">Cadastrar novo</div>
-    <label>Nome *</label><input id="med_nome" placeholder="Ex: Ivomec">
-    <label>Tipo</label><select id="med_tipo">${optTipoMed()}</select>
-    <label>Fabricante</label><input id="med_fab" placeholder="Ex: Boehringer">
-    <label>Marca comercial</label><input id="med_marca" placeholder="Ex: Ivomec Gold">
-    <label>Observação</label><input id="med_obs" placeholder="Opcional">
-    <div class="lado" style="margin-top:16px"><button class="btn btn-sec" onclick="fechar()">Fechar</button>
-      <button class="btn" onclick="salvarMedicamento()">Adicionar</button></div>`);
-}
-async function salvarMedicamento(){
-  const nome=val("med_nome");if(!nome)return alert("Informe o nome do medicamento.");
-  await put("medicamentos",{id:uid(),nome,tipo:val("med_tipo"),fabricante:val("med_fab"),marca:val("med_marca"),obs:val("med_obs")});
-  gerenciarMedicamentos();
-}
-async function excluirMedicamento(id){
-  const m=await get("medicamentos",id);
-  if(!confirm(`Excluir o medicamento "${m?m.nome:""}"?`))return;
-  await del("medicamentos",id); gerenciarMedicamentos();
-}
-async function formEditarMedicamento(id){
-  const m=await get("medicamentos",id);
-  abrir(`<h2>Editar medicamento</h2>
-    <label>Nome *</label><input id="med_nome" value="${esc(m.nome||"")}">
-    <label>Tipo</label><select id="med_tipo">${optTipoMed(m.tipo)}</select>
-    <label>Fabricante</label><input id="med_fab" value="${esc(m.fabricante||"")}">
-    <label>Marca comercial</label><input id="med_marca" value="${esc(m.marca||"")}">
-    <label>Observação</label><input id="med_obs" value="${esc(m.obs||"")}">
-    <div class="lado" style="margin-top:16px"><button class="btn btn-sec" onclick="gerenciarMedicamentos()">Voltar</button>
-      <button class="btn" onclick="salvarEdicaoMedicamento('${id}')">Salvar</button></div>`);
-}
-async function salvarEdicaoMedicamento(id){
-  const nome=val("med_nome");if(!nome)return alert("Informe o nome do medicamento.");
-  const m=await get("medicamentos",id);
-  m.nome=nome;m.tipo=val("med_tipo");m.fabricante=val("med_fab");m.marca=val("med_marca");m.obs=val("med_obs");
-  await put("medicamentos",m); gerenciarMedicamentos();
-}
+/* ---------- Cadastro de medicamentos ----------
+   V142: o cadastro de medicamentos agora é feito no Estoque de Insumos (grupo "Insumos do gado").
+   As funções antigas levam para lá, para nenhum botão antigo ficar sem destino. */
+async function gerenciarMedicamentos(){fechar();aba="painel";marcarNav("painel");telaEstoque();}
+async function formEditarMedicamento(id){if(await get("insumos",id))return formNovoInsumo(null,id);gerenciarMedicamentos();}
 
 async function formMedicarAnimal(id){
   const a=await get("animais",id);
-  const medicamentos=await getAll("medicamentos");
-  if(!medicamentos.length){
-    abrir(`<h2>💊 Medicar</h2>
-      <div class="meta">Nenhum medicamento cadastrado ainda. Cadastre o primeiro para registrar a aplicação.</div>
-      <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
-        <button class="btn" onclick="gerenciarMedicamentos()">Cadastrar medicamento</button></div>`);
-    return;
-  }
-  const optMed=medicamentos.map(m=>`<option value="${m.id}">${esc(m.nome)}${m.marca?` · ${esc(m.marca)}`:""}</option>`).join("");
+  const medicamentos=await listaMedicamentos();
+  if(!medicamentos.length)return abrir(semMedicamentoHtml("💊 Medicar"));
+  const optMed=`<option value="">— selecione —</option>`+optMedicamentos(medicamentos);
   const optVia=VIAS.map(v=>`<option value="${v}">${v}</option>`).join("");
   abrir(`<h2>💊 Medicar — ${codAnimal(a)}</h2>
     <label>Medicamento *</label><select id="md_med">${optMed}</select>
@@ -4436,7 +4450,7 @@ async function restaurarDadosBackup(d,pedirConfirmacao=true){
       await putRaw(s,it);
     }
   }
-  await numerarSemCodigo(); // V133
+  await numerarSemCodigo(); await migrarMedicamentosParaEstoque(); // V133/V142
   return true;
 }
 function importar(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();
@@ -4450,7 +4464,7 @@ function importar(inp){const f=inp.files[0];if(!f)return;const r=new FileReader(
 abrirDB().then(async()=>{
   // V60: primeiro abre a interface usando o IndexedDB local.
   // Supabase/sincronização rodam depois e nunca podem deixar a tela em branco.
-  await numerarSemCodigo(); // V133
+  await numerarSemCodigo(); await migrarMedicamentosParaEstoque(); // V133/V142
   await renderSeguro();
   checarNotificacoes();
   iniciarSyncEmSegundoPlano();
