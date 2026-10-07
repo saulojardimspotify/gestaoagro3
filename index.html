@@ -1085,6 +1085,12 @@ async function telaInicio(){
 
   // V141: valor do rebanho (custo de estoque dos ativos) — mesma regra do Financeiro › Resumo
   const valorRebanho=ativos.reduce((s,a)=>s+(a.custoEstoque||0),0);
+  // V148: nascidos na propriedade (custo zero no estoque, por isso fora do "valor do rebanho")
+  const nascidosProp=ativos.filter(a=>a.nascidoNaPropriedade===true);
+  const idadeMeses=a=>{const t=dataParaTs(a.dataNascimento);if(t==null)return null;const n=new Date(t),h=new Date();return (h.getFullYear()-n.getFullYear())*12+(h.getMonth()-n.getMonth())-(h.getDate()<n.getDate()?1:0);};
+  const nasAte24=nascidosProp.filter(a=>{const m=idadeMeses(a);return m!=null&&m<=24;}).length;
+  const nasAcima24=nascidosProp.filter(a=>{const m=idadeMeses(a);return m!=null&&m>24;}).length;
+  const nasSemData=nascidosProp.length-nasAte24-nasAcima24;
   // V143: rebanho hoje por propriedade, dono e lote (em abas)
   const {marcas}=await tudo();
   const loteDe=id=>lotes.find(l=>l.id===id);
@@ -1133,9 +1139,13 @@ async function telaInicio(){
   const desmAtras=animais.filter(a=>a.nascidoNaPropriedade===true&&a.status==="Ativo"&&!a.desmamado&&a.dataNascimento)
     .map(a=>({a,d:DIAS_DESMAMA-diasEntre(dataParaTs(a.dataNascimento),Date.now())}))
     .filter(x=>x.d<0).sort((x,y)=>x.d-y.d);
-  // 2) eventos futuros agendados (avisos ainda não concluídos, de hoje em diante)
-  const eventosFut=(await getAll("avisos")).filter(a=>!a.feito&&a.data&&(dataParaTs(a.data)>=hojeTs||a.tipo==="Próxima dose"))
+  // 2) avisos com data nos próximos 10 dias (V147) — doses atrasadas também aparecem
+  const DIAS_AVISO_HOME=10;
+  const pendAvisos=(await getAll("avisos")).filter(a=>!a.feito&&a.data);
+  const diasAte=a=>Math.round((dataParaTs(a.data)-hojeTs)/86400000);
+  const eventosFut=pendAvisos.filter(a=>{const d=diasAte(a);return d<=DIAS_AVISO_HOME&&(d>=0||a.tipo==="Próxima dose");})
     .sort((x,y)=>(x.data||"").localeCompare(y.data||""));
+  const maisAdiante=pendAvisos.filter(a=>diasAte(a)>DIAS_AVISO_HOME).length;
   // 3) pastos há mais de 3 meses no mesmo estado (ocupado ou reservado)
   const pastos3m=(pastos||[]).filter(p=>(p.status==="Ocupado"||p.status==="Descanso")&&diasEntre(p.statusDesde||p.criadoEm,Date.now())>90)
     .map(p=>({p,d:diasEntre(p.statusDesde||p.criadoEm,Date.now())})).sort((x,y)=>y.d-x.d);
@@ -1155,9 +1165,10 @@ async function telaInicio(){
       <div class="ti" style="font-size:15px">🌱 ${esc(x.p.nome)} — ${x.p.status==="Ocupado"?"ocupado":"reservado"} há ${x.d} dias</div>
       <div class="meta">Mais de 3 meses no mesmo estado (${meses} ${meses===1?"mês":"meses"})</div></div>`);});
 
+  const linkMais=maisAdiante?`<div class="meta rt" style="margin:2px 4px 10px;cursor:pointer;color:var(--verde);font-weight:600" onclick="telaAvisos()">${maisAdiante} aviso(s) mais adiante · ver em Avisos ›</div>`:"";
   const blocoAvisos=itensAviso.length
-    ? `<div class="h3" style="margin-top:4px">🔔 Avisos importantes</div>${itensAviso.join("")}`
-    : `<div class="card" style="border-left:4px solid var(--verde)"><div class="ti" style="font-size:15px;color:var(--verde-esc)">✅ Tudo em dia</div><div class="meta" style="margin-top:4px">Sem desmamas atrasadas, eventos agendados ou pastos há mais de 3 meses no mesmo estado.</div></div>`;
+    ? `<div class="h3" style="margin-top:4px">🔔 Avisos importantes</div>${itensAviso.join("")}${linkMais}`
+    : `<div class="card" style="border-left:4px solid var(--verde)"><div class="ti" style="font-size:15px;color:var(--verde-esc)">✅ Tudo em dia</div><div class="meta" style="margin-top:4px">Sem desmamas atrasadas, avisos para os próximos ${DIAS_AVISO_HOME} dias ou pastos há mais de 3 meses no mesmo estado.</div></div>${linkMais}`;
 
   $t.innerHTML=`
     <div class="home-greet">
@@ -1186,6 +1197,14 @@ async function telaInicio(){
       <div class="fh" onclick="menuFinanceiro()"><div class="l">A pagar</div><div class="v ${aPagar>0?"neg":""}">${homeMoney(aPagar)}</div></div>
       <div class="fh" onclick="menuFinanceiro()"><div class="l">Receita</div><div class="v">${homeMoney(receita)}</div></div>
       <div class="fh" onclick="menuFinanceiro()"><div class="l">Custos + despesas</div><div class="v neg">${homeMoney(despesas)}</div></div>
+      <div class="fh nasc" style="grid-column:1/-1;cursor:pointer" onclick="abrirAnimaisFiltro('desmama','todos')">
+        <div class="l">Nascidos na propriedade · fora do valor do rebanho</div>
+        <div style="display:flex;gap:10px;margin-top:6px">
+          <div style="flex:1;background:var(--verde-lite);border-radius:12px;padding:8px 10px"><div class="l">Até 24 meses</div><div class="v">${nasAte24}</div></div>
+          <div style="flex:1;background:var(--verde-lite);border-radius:12px;padding:8px 10px"><div class="l">Acima de 24 meses</div><div class="v">${nasAcima24}</div></div>
+        </div>
+        <div class="l" style="margin-top:6px;font-size:11.5px">Entram com custo zero no estoque (modelo de custo), então não somam no valor do rebanho.${nasSemData?` ${nasSemData} sem data de nascimento.`:""}</div>
+      </div>
     </div>
 </div>`;
 }
