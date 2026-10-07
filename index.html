@@ -647,7 +647,8 @@ const val=id=>(document.getElementById(id).value||"").trim();
 const TIPOS=["Vacinação","Medicamento","Marcação","Nascimento","Movimentação","Pesagem","Tratamento","Reprodução","Morte","Venda","Outro"];
 const VIAS=["Injeção","Pour on","Spray","Brinco","Ingestão","Outro"];
 const TIPOS_AVISO=["Comprar produto","Contratar serviço","Manejo","Outro"];
-const ICONE_AVISO={"Comprar produto":"🛒","Contratar serviço":"🧰","Manejo":"🐄","Outro":"🔔"};
+const ICONE_AVISO={"Comprar produto":"🛒","Contratar serviço":"🧰","Manejo":"🐄","Outro":"🔔","Próxima dose":"💉"};
+const somarDias=(dataStr,n)=>{const d=new Date(dataParaTs(dataStr||hoje()));d.setDate(d.getDate()+Number(n||0));return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
 const CAT_RECEITA=["Venda de animais","Venda de bezerro","Venda de matriz/descarte","Leite","Arrendamento","Outros"];
 const CAT_DESPESA=["Sanidade (vacina/remédio)","Alimentação (sal/ração)","Pasto (semente/adubo/herbicida)","Mão de obra","Combustível","Manutenção (cerca/máquina)","Veterinário","Impostos/taxas","Frete","Outros"];
 // ---- Estoque de insumos ----
@@ -1133,7 +1134,7 @@ async function telaInicio(){
     .map(a=>({a,d:DIAS_DESMAMA-diasEntre(dataParaTs(a.dataNascimento),Date.now())}))
     .filter(x=>x.d<0).sort((x,y)=>x.d-y.d);
   // 2) eventos futuros agendados (avisos ainda não concluídos, de hoje em diante)
-  const eventosFut=(await getAll("avisos")).filter(a=>!a.feito&&a.data&&dataParaTs(a.data)>=hojeTs)
+  const eventosFut=(await getAll("avisos")).filter(a=>!a.feito&&a.data&&(dataParaTs(a.data)>=hojeTs||a.tipo==="Próxima dose"))
     .sort((x,y)=>(x.data||"").localeCompare(y.data||""));
   // 3) pastos há mais de 3 meses no mesmo estado (ocupado ou reservado)
   const pastos3m=(pastos||[]).filter(p=>(p.status==="Ocupado"||p.status==="Descanso")&&diasEntre(p.statusDesde||p.criadoEm,Date.now())>90)
@@ -1144,7 +1145,7 @@ async function telaInicio(){
     <div class="ti" style="font-size:15px">🍼 Desmama atrasada — ${esc(rotuloCod(x.a))}</div>
     <div class="meta" style="color:#c0392b;font-weight:600">Passou ${-x.d} dia(s) do prazo de 210 dias</div></div>`));
   eventosFut.forEach(a=>{const dd=Math.round((dataParaTs(a.data)-hojeTs)/86400000);
-    const quando=dd===0?"hoje":(dd===1?"amanhã":`em ${dd} dias`);
+    const quando=dd<0?`atrasada há ${-dd} dia(s)`:dd===0?"hoje":(dd===1?"amanhã":`em ${dd} dias`);
     itensAviso.push(`<div class="card rt" onclick="telaAvisos()" style="border-left:4px solid #e0a800">
       <div class="ti" style="font-size:15px">${iconeAviso[a.tipo]||"🔔"} ${esc(a.tipo||"Evento")} — ${quando}</div>
       ${a.detalhe?`<div class="meta">${esc(a.detalhe)}</div>`:""}
@@ -1719,7 +1720,9 @@ async function telaAvisos(){
       }).join("")
     : "";
   // avisos personalizados (eventos futuros criados pelo usuário)
-  const avisosCustom=(await getAll("avisos")).filter(a=>!a.feito)
+  const todosAvisos=(await getAll("avisos")).filter(a=>!a.feito);
+  const blocoDoses=await blocoProximasDoses(todosAvisos.filter(a=>a.tipo==="Próxima dose"),animais);
+  const avisosCustom=todosAvisos.filter(a=>a.tipo!=="Próxima dose")
     .sort((x,y)=>(x.data||"").localeCompare(y.data||"")||(x.hora||"").localeCompare(y.hora||""));
   const hojeTs=dataParaTs(hoje());
   const itensAviso=avisosCustom.map(a=>{
@@ -1743,10 +1746,59 @@ async function telaAvisos(){
     <div class="sechead"><span class="sic">🔔</span><h2>Avisos</h2></div>
     <button class="btn" onclick="formNovoAviso()">+ Cadastrar aviso</button>
     ${btnNotif}
+    ${blocoDoses}
     ${blocoEventos}
     ${blocoDesmama}
     ${bloco(descanso,"🌿 Pastos em descanso")}
     ${bloco(livres,"⬜ Pastos livres")}`;
+}
+/* ---------- V145: próximas doses (lembretes criados na aplicação) ---------- */
+async function blocoProximasDoses(avs,animais){
+  if(!avs.length)return "";
+  const insumos=await getAll("insumos");
+  const hojeTs=dataParaTs(hoje());
+  const porMed=new Map();
+  for(const a of avs){const k=a.medicamentoId||"__";if(!porMed.has(k))porMed.set(k,[]);porMed.get(k).push(a);}
+  const meds=[...porMed.entries()].map(([k,arr])=>({k,arr:arr.sort((x,y)=>(x.data||"").localeCompare(y.data||"")),it:insumos.find(i=>i.id===k)}))
+    .sort((x,y)=>(x.arr[0].data||"").localeCompare(y.arr[0].data||""));
+  return `<div class="h3">💉 Próximas doses</div>`+meds.map(({arr,it})=>{
+    const nome=it?it.nome+(it.marca?` · ${it.marca}`:""):"Medicamento";
+    const saldoTxt=it?`Estoque: ${numFmt(it.saldo||0)} ${esc(it.unidade||"un")}`:"";
+    const itens=arr.map(a=>{
+      const an=(a.animalIds||[]).map(id=>animais.find(x=>x.id===id)).filter(x=>x&&x.status==="Ativo");
+      const d=Math.round((dataParaTs(a.data)-hojeTs)/86400000);
+      const quando=d>1?`em ${d} dias`:d===1?"amanhã":d===0?"hoje":`atrasada há ${-d} dia(s)`;
+      const cor=d<0?"#c0392b":d<=3?"#b8860b":"var(--muted)";
+      const precisa=a.dosePrevista?a.dosePrevista*an.length:null;
+      const falta=it&&precisa!=null&&precisa>(it.saldo||0)+1e-9;
+      const nomes=an.slice(0,6).map(x=>esc(rotuloCod(x))).join(", ")+(an.length>6?` e mais ${an.length-6}`:"");
+      return `<div style="padding:10px 0;border-top:1px solid var(--linha)">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b style="color:${cor}">📅 ${fmt(a.data)} · ${quando}</b>
+          <span style="white-space:nowrap"><button class="btn-fant" style="padding:2px 6px;color:var(--verde)" onclick="formEditarProximaDose('${a.id}')">✎</button><button class="btn-fant" style="padding:2px 6px;color:var(--perigo)" onclick="excluirAviso('${a.id}')">✕</button></span></div>
+        <div class="meta" style="margin-top:3px">${an.length?`<b>${an.length} animal(is):</b> ${nomes}`:"Nenhum animal ativo neste lembrete."}</div>
+        ${a.dosePrevista?`<div class="meta">Dose: ${numFmt(a.dosePrevista)} ${esc(a.unidade||"")} por animal${precisa!=null&&an.length?` · total ${numFmt(precisa)} ${esc(a.unidade||"")}`:""}${a.via?` · ${esc(a.via)}`:""}</div>`:""}
+        ${falta?`<div class="meta" style="color:#c0392b;font-weight:600">Estoque insuficiente para esta dose — registre uma entrada.</div>`:""}
+        ${an.length?`<button class="btn btn-sec" style="margin:8px 0 0" onclick="aplicarProximaDose('${a.id}')">💉 Aplicar agora</button>`:""}
+      </div>`;}).join("");
+    return `<div class="card" style="cursor:default"><div class="ti" style="font-size:16px">💊 ${esc(nome)}</div><div class="meta">${saldoTxt}</div>${itens}</div>`;
+  }).join("");
+}
+async function aplicarProximaDose(id){
+  const a=await get("avisos",id);if(!a)return telaAvisos();
+  const ativos=new Set((await getAll("animais")).filter(x=>x.status==="Ativo").map(x=>x.id));
+  formAplicacao({voltar:"avisos",avisoId:id,medId:a.medicamentoId,animalIds:(a.animalIds||[]).filter(x=>ativos.has(x)),dose:a.dosePrevista,via:a.via});
+}
+async function formEditarProximaDose(id){
+  const a=await get("avisos",id);if(!a)return;
+  abrir(`<h2>Próxima dose</h2><div class="meta" style="margin-bottom:6px">${esc(a.detalhe||"")}</div>
+    <label>Data *</label><input id="pd_data" type="date" value="${a.data||hoje()}">
+    <label>Hora (opcional)</label><input id="pd_hora" type="time" value="${esc(a.hora||"")}">
+    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
+      <button class="btn" onclick="salvarProximaDose('${id}')">Salvar</button></div>`);
+}
+async function salvarProximaDose(id){
+  const a=await get("avisos",id);if(!a)return;const d=val("pd_data");if(!d)return alert("Informe a data.");
+  a.data=d;a.hora=val("pd_hora");a.notificadoEm=null;await put("avisos",a);fechar();telaAvisos();
 }
 /* ---------- Avisos personalizados ---------- */
 async function formNovoAviso(aviso){
@@ -1760,7 +1812,7 @@ async function formNovoAviso(aviso){
     <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
       <button class="btn" onclick="salvarAviso(${ed?`'${ed.id}'`:""})">Salvar</button></div>`);
 }
-async function formEditarAviso(id){const a=await get("avisos",id);if(a)formNovoAviso(a);}
+async function formEditarAviso(id){const a=await get("avisos",id);if(!a)return;if(a.tipo==="Próxima dose")return formEditarProximaDose(id);formNovoAviso(a);}
 async function salvarAviso(id){
   const tipo=val("av_tipo"), det=val("av_det"), data=val("av_data"), hora=val("av_hora");
   if(!det)return alert("Descreva o aviso.");
@@ -3997,8 +4049,8 @@ async function telaMedicamentosManejo(medPre){
   const grupos=new Map();
   for(const e of eventos.filter(e=>e.tipo==="Medicamento")){
     const k=e.aplicacaoId||[e.data||"",e.hora||"",e.medicamentoId||"",e.via||"",e.dose||"",e.detalhes||""].join("|");
-    if(!grupos.has(k))grupos.set(k,{e,ids:[]});
-    grupos.get(k).ids.push(e.animalId);
+    if(!grupos.has(k))grupos.set(k,{e,ids:[],evIds:[]});
+    grupos.get(k).ids.push(e.animalId);grupos.get(k).evIds.push(e.id);
   }
   const regs=[...grupos.values()].sort((a,b)=>(b.e.data||"").localeCompare(a.e.data||"")||(b.e.hora||"").localeCompare(a.e.hora||""));
   const quem=ids=>{
@@ -4007,7 +4059,7 @@ async function telaMedicamentosManejo(medPre){
     const lotesN=[...new Set(an.map(a=>nomeLote(a.loteAtualId)))];
     return `<b>${an.length} animais</b>${lotesN.length<=2?` · ${lotesN.map(esc).join(", ")}`:""}`;
   };
-  const itensHist=regs.map(({e,ids})=>`<div class="manejo-reg"><div class="mr-top"><div class="mr-title">${esc(nomeMed(e.medicamentoId))}</div><div class="mr-date">${fmt(e.data)}${e.hora?` · ${esc(e.hora)}`:""}</div></div>
+  const itensHist=regs.map(({e,ids,evIds})=>`<div class="manejo-reg"><div class="mr-top"><div class="mr-title">${esc(nomeMed(e.medicamentoId))}</div><div class="mr-date" style="display:flex;align-items:center;gap:6px">${fmt(e.data)}${e.hora?` · ${esc(e.hora)}`:""}<button class="btn-fant" title="Excluir aplicação" style="padding:0 2px;color:var(--perigo);font-size:15px;line-height:1" onclick="excluirAplicacaoHist('${evIds.join(",")}')">✕</button></div></div>
     <div class="mr-meta">${quem(ids)}${e.via||e.dose?`<br>${[e.via,e.dose?(e.doseQtd&&ids.length>1?`${e.dose} por animal · total ${numFmt(e.doseQtd*ids.length)} ${e.unidade||""}`:e.dose):""].filter(Boolean).map(esc).join(" · ")}`:""}${e.aplicacaoId?`<br><span style="color:var(--verde)">✓ baixa no estoque</span>`:""}${e.detalhes?`<br>${esc(e.detalhes)}`:""}</div></div>`);
   const totalAnimais=regs.reduce((s,r)=>s+r.ids.length,0);
 
@@ -4050,21 +4102,22 @@ async function formAplicacao(opts){
   const ativos=animais.filter(a=>a.status==="Ativo").sort((x,y)=>(x.codigo||0)-(y.codigo||0));
   const nomeLote=id=>(lotes.find(l=>l.id===id)||{}).nome||"—";
   const ativosIds=new Set(ativos.map(a=>a.id));
+  const pre=new Set(_apCtx.animalIds||[]);
   const qtdGrupo=gid=>new Set(grupo_animais.filter(v=>v.grupoId===gid&&ativosIds.has(v.animalId)).map(v=>v.animalId)).size;
   const optAn=`<option value="">— selecione —</option>`+ativos.map(a=>`<option value="${a.id}" ${a.id===_apCtx.animalId?"selected":""}>${esc(rotuloCod(a))} — ${esc(nomeLote(a.loteAtualId))}</option>`).join("");
   const optLt=`<option value="">— selecione —</option>`+lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);const n=ativos.filter(a=>a.loteAtualId===l.id).length;return`<option value="${l.id}" ${l.id===_apCtx.loteId?"selected":""}>${esc(l.nome)}${p&&propriedades.length>1?` — ${esc(p.nome)}`:""} (${n})</option>`;}).join("");
   const optGr=`<option value="">— selecione —</option>`+(grupos||[]).map(g=>`<option value="${g.id}">${esc(g.nome)} (${qtdGrupo(g.id)})</option>`).join("");
   const checks=ativos.map(a=>`<label class="ap-ck" data-b="${esc((rotuloCod(a)+" "+nomeLote(a.loteAtualId)).toLowerCase())}" style="display:flex;gap:10px;align-items:center;padding:8px 2px;border-bottom:1px solid var(--linha)">
-      <input type="checkbox" class="ap_multi" value="${a.id}" onchange="resumoAplicacao()" style="width:20px;height:20px;flex:0 0 auto">
+      <input type="checkbox" class="ap_multi" value="${a.id}" ${pre.has(a.id)?"checked":""} onchange="resumoAplicacao()" style="width:20px;height:20px;flex:0 0 auto">
       <span><b>${esc(rotuloCod(a))}</b><span class="meta" style="display:block">${esc(nomeLote(a.loteAtualId))}</span></span></label>`).join("");
   const optMed=`<option value="">— selecione —</option>`+meds.map(m=>{const sem=(m.saldo||0)<=0;
     return `<option value="${m.id}" ${sem?"disabled":""} ${m.id===_apCtx.medId&&!sem?"selected":""}>${esc(m.nome)}${m.marca?` · ${esc(m.marca)}`:""} — ${sem?"sem estoque":`estoque ${numFmt(m.saldo)} ${esc(m.unidade||"un")}`}</option>`;}).join("");
-  const alvo0=_apCtx.loteId?"lote":"animal";
+  const alvo0=_apCtx.animalIds?"varios":(_apCtx.loteId?"lote":"animal");
   abrir(`<h2>Registrar aplicação</h2>
     <label>Aplicar em *</label>
     <select id="ap_alvo" onchange="alvoAplicacao()">
       <option value="animal" ${alvo0==="animal"?"selected":""}>Um animal</option>
-      <option value="varios">Vários animais</option>
+      <option value="varios" ${alvo0==="varios"?"selected":""}>Vários animais</option>
       <option value="grupo">Um grupo</option>
       <option value="lote" ${alvo0==="lote"?"selected":""}>Lote inteiro</option>
     </select>
@@ -4076,15 +4129,51 @@ async function formAplicacao(opts){
     <div id="ap_g_grupo" style="display:none"><label>Grupo *</label><select id="ap_grupo" onchange="resumoAplicacao()">${optGr}</select></div>
     <div id="ap_g_lote" style="display:none"><label>Lote *</label><select id="ap_lote" onchange="resumoAplicacao()">${optLt}</select></div>
     <label>Medicamento / vacina *</label><select id="ap_med" onchange="resumoAplicacao()">${optMed}</select>
-    <label id="ap_dose_lbl">Dose por animal *</label><input id="ap_dose" inputmode="decimal" placeholder="Ex: 5" oninput="resumoAplicacao()">
-    <label>Via de aplicação</label><select id="ap_via">${VIAS.map(v=>`<option value="${v}">${v}</option>`).join("")}</select>
+    <label id="ap_dose_lbl">Dose por animal *</label><input id="ap_dose" inputmode="decimal" placeholder="Ex: 5" value="${_apCtx.dose!=null?String(_apCtx.dose).replace(".",","):""}" oninput="resumoAplicacao()">
+    <label>Via de aplicação</label><select id="ap_via">${VIAS.map(v=>`<option value="${v}" ${v===_apCtx.via?"selected":""}>${v}</option>`).join("")}</select>
     <label>Data e hora</label>
     <div class="lado"><input id="ap_data" type="date" value="${hoje()}" max="${hoje()}"><input id="ap_hora" type="time" value="${horaAgora()}"></div>
-    <label>Observação (opcional)</label><input id="ap_obs" placeholder="Ex: reforço, lote/validade do frasco, quem aplicou…">
+    <label>Observação (opcional)</label><input id="ap_obs" value="${_apCtx.avisoId?"Dose de reforço":""}" placeholder="Ex: reforço, lote/validade do frasco, quem aplicou…">
+    <label>Tem próxima dose (reforço)?</label>
+    <select id="ap_prox" onchange="toggleProxDose()"><option value="nao">Não</option><option value="sim">Sim — criar lembrete em Avisos</option></select>
+    <div id="ap_g_prox" style="display:none">
+      <label>Daqui a quantos dias? *</label><input id="ap_prox_dias" inputmode="numeric" placeholder="Ex: 21" oninput="calcDataProxDose()">
+      <label>Data da próxima dose *</label><input id="ap_prox_data" type="date" oninput="document.getElementById('ap_prox_dias').value=''">
+      <label>Aplicar a próxima dose em</label>
+      <select id="ap_prox_quem" onchange="resumoAplicacao()"><option value="todos">Todos os animais desta aplicação</option><option value="alguns">Escolher animais</option></select>
+      <div id="ap_prox_lista" style="display:none;max-height:220px;overflow:auto;border-top:1px solid var(--linha);margin-top:8px"></div>
+    </div>
     <div id="ap_resumo" class="card" style="margin-top:12px;padding:12px;cursor:default;background:var(--verde-lite);box-shadow:none"></div>
     <div class="lado" style="margin-top:14px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
       <button class="btn" onclick="salvarAplicacao()">Registrar</button></div>`);
   alvoAplicacao();
+}
+// V146: excluir uma aplicação pelo histórico (devolve ao estoque e estorna o custo pelo hook do del)
+async function excluirAplicacaoHist(idsCsv){
+  const ids=idsCsv.split(",").filter(Boolean);if(!ids.length)return;
+  const ev=await get("eventos",ids[0]);
+  const comBaixa=!!(ev&&ev.aplicacaoId);
+  const msg=`Excluir esta aplicação de ${ids.length} animal(is)?`+(comBaixa?`\n\nA quantidade volta para o estoque, o custo é estornado na contabilidade e o lembrete de próxima dose (se houver) é removido.`:"");
+  if(!confirm(msg))return;
+  await excluirEventosEmBloco(ids);
+  telaMedicamentosManejo();
+}
+// Exclui vários eventos e ajusta cada aplicação uma vez só (um estorno pelo total)
+async function excluirEventosEmBloco(ids){
+  const apls=new Set();
+  for(const id of ids){const e=await get("eventos",id);if(e&&e.aplicacaoId)apls.add(e.aplicacaoId);}
+  _ajustandoAplicacao=true;
+  try{for(const id of ids)await del("eventos",id);}finally{_ajustandoAplicacao=false;}
+  for(const a of apls)await ajustarAplicacaoAposExclusao(a);
+}
+function toggleProxDose(){
+  const on=val("ap_prox")==="sim";const g=document.getElementById("ap_g_prox");if(g)g.style.display=on?"block":"none";
+  if(on&&!val("ap_prox_data")){const d=document.getElementById("ap_prox_dias");if(d&&!d.value)d.value="21";calcDataProxDose();}
+  resumoAplicacao();
+}
+function calcDataProxDose(){
+  const n=parseInt(val("ap_prox_dias"),10);const el=document.getElementById("ap_prox_data");
+  if(el&&n>0)el.value=somarDias(val("ap_data")||hoje(),n);
 }
 function alvoAplicacao(){
   const a=val("ap_alvo")||"animal";
@@ -4112,6 +4201,12 @@ async function resumoAplicacao(){
   const un=it?(it.unidade||"un"):"";
   const lbl=document.getElementById("ap_dose_lbl");if(lbl)lbl.textContent=`Dose por animal${un?` (${un})`:""} *`;
   const {ids}=await animaisDaAplicacao();const dose=numBR("ap_dose");
+  const pl=document.getElementById("ap_prox_lista");
+  if(pl){const alguns=val("ap_prox")==="sim"&&val("ap_prox_quem")==="alguns";pl.style.display=alguns?"block":"none";
+    if(alguns){const marcados=new Set([...pl.querySelectorAll("input:checked")].map(c=>c.value));const primeira=!pl.dataset.ok;
+      const todos=await getAll("animais");
+      pl.innerHTML=ids.map(id=>{const a=todos.find(x=>x.id===id);return a?`<label style="display:flex;gap:10px;align-items:center;padding:7px 2px;border-bottom:1px solid var(--linha)"><input type="checkbox" class="ap_prox_ck" value="${id}" ${primeira||marcados.has(id)?"checked":""} style="width:20px;height:20px"><b>${esc(rotuloCod(a))}</b></label>`:"";}).join("")||`<div class="meta" style="padding:8px 0">Escolha primeiro os animais da aplicação.</div>`;
+      pl.dataset.ok="1";}}
   if(!it){box.innerHTML=`<div class="meta">Escolha o produto e a dose para ver o total e o custo.</div>`;return;}
   const total=(dose>0?dose:0)*ids.length, saldo=it.saldo||0, custo=total*(it.custoMedio||0);
   const falta=total>saldo+1e-9;
@@ -4135,9 +4230,30 @@ async function salvarAplicacao(){
   const un=it.unidade||"un",total=dose*ids.length,saldo=it.saldo||0;
   if(saldo<=0)return alert(`Não há ${it.nome} no estoque. Registre a entrada (compra) no Estoque de Insumos antes de aplicar.`);
   if(total>saldo+1e-9)return alert(`Estoque insuficiente de ${it.nome}: a aplicação precisa de ${numFmt(total)} ${un} e o saldo é ${numFmt(saldo)} ${un}. Registre uma entrada no Estoque de Insumos ou diminua a quantidade de animais.`);
+  let prox=null;
+  if(val("ap_prox")==="sim"){
+    const dp=val("ap_prox_data");
+    if(!dp)return alert("Informe em quantos dias (ou a data) da próxima dose.");
+    if(dp<=data)return alert("A próxima dose precisa ser depois da data desta aplicação.");
+    const pids=val("ap_prox_quem")==="alguns"?[...document.querySelectorAll(".ap_prox_ck:checked")].map(c=>c.value):ids.slice();
+    if(!pids.length)return alert("Escolha em quais animais será a próxima dose.");
+    prox={data:dp,ids:pids};
+  }
   const r=await registrarAplicacaoEstoque({it,ids,alvo,refId,dose,data,hora,via,obs});
+  const v0=_apCtx.voltar;
+  // V145: aplicação feita a partir de um lembrete de próxima dose
+  if(_apCtx.avisoId){const av=await get("avisos",_apCtx.avisoId);
+    if(av){const resto=(av.animalIds||[]).filter(id=>!ids.includes(id));
+      if(resto.length){av.animalIds=resto;av.detalhe=`${it.nome} — ${resto.length} animal(is)`;}
+      else{av.feito=true;av.feitoEm=Date.now();av.aplicacaoFeitaId=r.aplicacaoId;}
+      await put("avisos",av);}}
+  // V145: lembrete da próxima dose em Avisos
+  if(prox)await put("avisos",{id:uid(),tipo:"Próxima dose",detalhe:`${it.nome} — ${prox.ids.length} animal(is)`,data:prox.data,hora:"",
+    feito:false,notificadoEm:null,medicamentoId:it.id,animalIds:prox.ids,dosePrevista:dose,unidade:it.unidade||"un",via,
+    origemAplicacaoId:r.aplicacaoId,criadoEm:Date.now()});
   fechar();
-  alert(`Aplicação registrada em ${ids.length} animal(is). Baixa de ${numFmt(total)} ${un} no estoque${r.valor>0?` · custo ${moeda(r.valor)}`:""}.`);
+  alert(`Aplicação registrada em ${ids.length} animal(is). Baixa de ${numFmt(total)} ${un} no estoque${r.valor>0?` · custo ${moeda(r.valor)}`:""}.${prox?`\n\nLembrete criado em Avisos: próxima dose em ${fmt(prox.data)} para ${prox.ids.length} animal(is).`:""}`);
+  if(v0==="avisos")return telaAvisos();
   const v=_apCtx.voltar;
   if(v==="animal"&&_apCtx.animalId)return verAnimal(_apCtx.animalId);
   if(v==="lote"&&_apCtx.loteId)return verLote(_apCtx.loteId);
@@ -4174,10 +4290,14 @@ async function ajustarAplicacaoAposExclusao(aplicacaoId){
     const restantes=(await getAll("eventos")).filter(e=>e.aplicacaoId===aplicacaoId);
     const mov=(await getAll("insumo_mov")).find(m=>m.aplicacaoId===aplicacaoId);if(!mov)return;
     const lanc=(await getAll("lancamentos")).find(l=>l.origem==="consumo_insumo"&&l.refId===mov.id);
+    const avs=(await getAll("avisos")).filter(a=>a.origemAplicacaoId===aplicacaoId&&!a.feito);
     if(!restantes.length){
       if(lanc)await del("lancamentos",lanc.id);
       await del("insumo_mov",mov.id);
+      for(const a of avs)await del("avisos",a.id); // V145: sem aplicação, sem lembrete de reforço
     }else{
+      for(const a of avs){const ok=(a.animalIds||[]).filter(id=>restantes.some(e=>e.animalId===id));
+        if(!ok.length)await del("avisos",a.id);else if(ok.length!==(a.animalIds||[]).length){a.animalIds=ok;a.detalhe=a.detalhe.replace(/\d+ animal\(is\)$/,`${ok.length} animal(is)`);await put("avisos",a);}}
       const novaQtd=restantes.reduce((s,e)=>s+(Number(e.doseQtd)||0),0);
       const fator=mov.qtd>0?novaQtd/mov.qtd:0;
       mov.qtd=novaQtd;mov.obs=`Aplicação em ${restantes.length} animal(is)`;await put("insumo_mov",mov);
@@ -4518,7 +4638,7 @@ async function salvarGrupoManejo(tipo,idsCsv){
 async function excluirGrupoManejo(tipo,idsCsv){
   const ids=idsCsv.split(",");
   if(!confirm(`Excluir este registro? Ele será removido de ${ids.length} animal(is).`))return;
-  for(const id of ids)await del("eventos",id);
+  await excluirEventosEmBloco(ids);
   telaManejo();
 }
 
