@@ -236,7 +236,7 @@
         debito:'Ganho a realizar — semoventes',credito:'Ganho realizado com semoventes',valor:l.ganhoRealizado,
         origem:'Ganho realizado',propriedadeId:l.propriedadeId});
     }else if(l.tipo==='despesa'){
-      const deb=l.origem===ORIGEM_MORTE?'Perda com morte de animais':l.origem==='consumo_insumo'?'Custo / despesa de insumos':(l.natureza==='custo'?'Custo de produção':'Despesas operacionais');
+      const deb=l.origem===ORIGEM_MORTE?'Perda com morte de animais':l.origem==='consumo_insumo'?(l.contaV144?'Custo de produção':'Custo / despesa de insumos'):(l.natureza==='custo'?'Custo de produção':'Despesas operacionais');
       const cred=l.origem===ORIGEM_MORTE?'Estoque de semoventes':l.origem==='consumo_insumo'?'Estoque de insumos':contra;
       await salvarPartida({store:'lancamentos',refId:l.id,chave:'despesa',data:l.data,descricao:l.descricao||l.categoria,
         debito:deb,credito:cred,valor:l.valor,origem:l.categoria||'Despesa',propriedadeId:l.propriedadeId});

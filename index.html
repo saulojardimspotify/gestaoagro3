@@ -298,17 +298,25 @@
   .atalho:active{transform:scale(.97);}
   .atalho .at-ic{width:42px;height:42px;border-radius:50%;background:var(--verde-lite);color:var(--verde);display:flex;align-items:center;justify-content:center;}
   .atalho .at-ic svg.ico{width:22px;height:22px;}
-  .reb-total{display:flex;align-items:baseline;gap:8px;} .reb-total b{font-size:34px;line-height:1;color:var(--verde-esc);font-weight:800;}
-  .reb-total span{color:var(--muted);font-size:14px;}
-  .reb-grupo{margin-top:14px;} .reb-grupo:first-of-type{margin-top:12px;}
-  .reb-tit{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;}
-  .reb-lin{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--linha);}
+  /* V143: Rebanho hoje com abas */
+  .reb-card{padding:16px 16px 6px;cursor:default;}
+  .reb-total{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+  .reb-total b{font-size:44px;line-height:1;color:var(--verde);font-weight:800;letter-spacing:-1px;}
+  .reb-total .rt1{font-weight:800;color:var(--verde-esc);font-size:16px;} .reb-total .rt2{color:var(--muted);font-size:13px;margin-top:2px;}
+  .reb-abas{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--verde-lite);border-radius:14px;padding:4px;margin-bottom:6px;}
+  .reb-abas button{border:none;background:none;border-radius:11px;padding:9px 4px;font-size:13.5px;font-weight:700;color:var(--verde-esc);cursor:pointer;}
+  .reb-abas button.on{background:var(--verde);color:#fff;box-shadow:0 1px 4px rgba(20,60,35,.18);}
+  .reb-lista{display:none;} .reb-lista.on{display:block;}
+  .reb-lin{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--linha);}
   .reb-lin:last-child{border-bottom:none;} .reb-lin.rt{cursor:pointer;}
-  .reb-nome{font-size:14.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .reb-nome small{color:var(--muted);font-weight:500;}
-  .reb-n{font-weight:800;color:var(--verde-esc);font-size:15px;}
-  .reb-bar{grid-column:1/-1;height:5px;border-radius:3px;background:var(--verde-lite);overflow:hidden;}
-  .reb-bar i{display:block;height:100%;background:var(--verde);border-radius:3px;}
+  .reb-txt{flex:1;min-width:0;} .reb-nome{font-size:15px;font-weight:700;color:var(--texto,#1c2b20);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .reb-sub{font-size:12.5px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .reb-n{font-weight:800;color:var(--verde-esc);font-size:19px;}
+  .reb-chev{color:var(--verde);font-size:15px;width:14px;text-align:center;transition:transform .15s;}
+  .reb-lin.aberto .reb-chev{transform:rotate(180deg);}
+  .reb-det{display:none;padding:0 0 10px 12px;border-bottom:1px solid var(--linha);} .reb-det.on{display:block;}
+  .reb-det .rd{display:flex;justify-content:space-between;padding:6px 0;font-size:13.5px;cursor:pointer;} .reb-det .rd b{color:var(--verde-esc);}
+  .reb-det .rd span{color:var(--muted);}
   .fin-home{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .fin-home .fh{background:#fff;border-radius:14px;box-shadow:var(--sombra);padding:11px 12px;cursor:pointer;}
   .fin-home .fh .l{font-size:12px;color:var(--muted);} .fin-home .fh .v{font-size:17px;font-weight:800;margin-top:3px;color:var(--verde-esc);}
@@ -533,6 +541,7 @@ async function put(s,o){
 async function del(s,id){
   const o=await getRaw(s,id);
   if(!o)return;
+  const _aplV144=s==="eventos"&&!o.deleted_at&&o.aplicacaoId&&!window._suspenderEstornoV119?o.aplicacaoId:null;
   const agora=agoraISO();
   if(!o.created_at)o.created_at=agora;
   o.updated_at=agora;
@@ -545,6 +554,7 @@ async function del(s,id){
   }
   const r=await putRaw(s,o);
   if(SYNC_STORES.includes(s))agendarSync();
+  if(_aplV144)await ajustarAplicacaoAposExclusao(_aplV144);
   return r;
 }
 async function garantirSyncMeta(){
@@ -1074,20 +1084,38 @@ async function telaInicio(){
 
   // V141: valor do rebanho (custo de estoque dos ativos) — mesma regra do Financeiro › Resumo
   const valorRebanho=ativos.reduce((s,a)=>s+(a.custoEstoque||0),0);
-  // V141: rebanho hoje por dono, propriedade e lote
+  // V143: rebanho hoje por propriedade, dono e lote (em abas)
   const {marcas}=await tudo();
   const loteDe=id=>lotes.find(l=>l.id===id);
-  const contar=(fn)=>{const m=new Map();for(const a of ativos){const k=fn(a);m.set(k,(m.get(k)||0)+1);}return m;};
+  const propDe=a=>{const l=loteDe(a.loteAtualId);return l&&propriedades.find(p=>p.id===l.propriedadeId)?l.propriedadeId:"__sem";};
+  const contar=(lista,fn)=>{const m=new Map();for(const a of lista){const k=fn(a);m.set(k,(m.get(k)||0)+1);}return m;};
   const ordenar=arr=>arr.filter(x=>x.n>0).sort((x,y)=>y.n-x.n||String(x.nome).localeCompare(String(y.nome)));
-  const cDono=contar(a=>a.marcaId&&marcas.find(m=>m.id===a.marcaId)?a.marcaId:"__sem");
-  const porDono=ordenar([...marcas.map(m=>({nome:esc(m.sigla||m.nome||"Marca")+(m.nome&&m.sigla?` <small>· ${esc(m.nome)}</small>`:""),n:cDono.get(m.id)||0,onclick:`abrirAnimaisFiltro('marca','${m.id}')`})),
+  const linha=x=>`<div class="reb-lin${x.onclick?" rt":""}" ${x.onclick?`onclick="${x.onclick}"`:""}><div class="reb-txt"><div class="reb-nome">${x.nome}</div>${x.sub?`<div class="reb-sub">${x.sub}</div>`:""}</div><div class="reb-n">${x.n}</div>${x.chev?`<span class="reb-chev">⌄</span>`:""}</div>${x.det||""}`;
+  // propriedades (tocar abre os lotes da propriedade)
+  const cProp=contar(ativos,propDe);
+  const porProp=ordenar([...propriedades.map(p=>({id:p.id,nome:esc(p.nome),n:cProp.get(p.id)||0})),{id:"__sem",nome:"Sem propriedade",n:cProp.get("__sem")||0}]).map((x,k)=>{
+    const daProp=ativos.filter(a=>propDe(a)===x.id);
+    const cl=contar(daProp,a=>loteDe(a.loteAtualId)?a.loteAtualId:"__sem");
+    const itens=ordenar([...lotes.map(l=>({nome:esc(l.nome),n:cl.get(l.id)||0,onclick:`verLote('${l.id}')`})),{nome:"Sem lote",n:cl.get("__sem")||0,onclick:`abrirAnimaisFiltro('lote','__sem')`}]);
+    return {...x,chev:true,onclick:`abrirRebDet(this,'rbp${k}')`,
+      det:`<div class="reb-det" id="rbp${k}">${itens.map(i=>`<div class="rd" onclick="${i.onclick}"><span>${i.nome}</span><b>${i.n}</b></div>`).join("")}</div>`};
+  });
+  // donos
+  const cDono=contar(ativos,a=>a.marcaId&&marcas.find(m=>m.id===a.marcaId)?a.marcaId:"__sem");
+  const porDono=ordenar([...marcas.map(m=>({nome:esc(m.sigla||m.nome||"Marca"),sub:m.sigla&&m.nome?esc(m.nome):"",n:cDono.get(m.id)||0,onclick:`abrirAnimaisFiltro('marca','${m.id}')`})),
     {nome:"Sem dono informado",n:cDono.get("__sem")||0,onclick:`abrirAnimaisFiltro('marca','__sem')`}]);
-  const cProp=contar(a=>{const l=loteDe(a.loteAtualId);return l&&propriedades.find(p=>p.id===l.propriedadeId)?l.propriedadeId:"__sem";});
-  const porProp=ordenar([...propriedades.map(p=>({nome:esc(p.nome),n:cProp.get(p.id)||0})),{nome:"Sem propriedade",n:cProp.get("__sem")||0}]);
-  const cLote=contar(a=>loteDe(a.loteAtualId)?a.loteAtualId:"__sem");
-  const porLote=ordenar([...lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);return{nome:esc(l.nome)+(p&&propriedades.length>1?` <small>· ${esc(p.nome)}</small>`:""),n:cLote.get(l.id)||0,onclick:`verLote('${l.id}')`};}),
+  // lotes
+  const cLote=contar(ativos,a=>loteDe(a.loteAtualId)?a.loteAtualId:"__sem");
+  const porLote=ordenar([...lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);return{nome:esc(l.nome),sub:p?esc(p.nome):"",n:cLote.get(l.id)||0,onclick:`verLote('${l.id}')`};}),
     {nome:"Sem lote",n:cLote.get("__sem")||0,onclick:`abrirAnimaisFiltro('lote','__sem')`}]);
-  const grupoReb=(tit,arr)=>arr.length?`<div class="reb-grupo"><div class="reb-tit">${tit}</div>${arr.map(x=>`<div class="reb-lin${x.onclick?" rt":""}" ${x.onclick?`onclick="${x.onclick}"`:""}><div class="reb-nome">${x.nome}</div><div class="reb-n">${x.n}</div><div class="reb-bar"><i style="width:${ativos.length?Math.max(3,Math.round(x.n/ativos.length*100)):0}%"></i></div></div>`).join("")}</div>`:"";
+  let abaReb="prop";try{abaReb=localStorage.getItem("rebanho_home_aba")||"prop";}catch(_){}
+  if(!["prop","dono","lote"].includes(abaReb))abaReb="prop";
+  const listaReb=(k,arr)=>`<div class="reb-lista${abaReb===k?" on":""}" data-reb="${k}">${arr.length?arr.map(linha).join(""):`<div class="meta" style="padding:12px 0">Nenhum animal ativo.</div>`}</div>`;
+  const blocoRebanho=`<div class="card reb-card">
+      <div class="reb-total"><b>${ativos.length}</b><div><div class="rt1">${ativos.length===1?"animal ativo":"animais ativos"}</div><div class="rt2">${propriedades.length>1?"Todas as propriedades":(propriedades[0]?esc(propriedades[0].nome):"")}</div></div></div>
+      <div class="reb-abas">${[["prop","Propriedades"],["dono","Donos"],["lote","Lotes"]].map(([k,t])=>`<button class="${abaReb===k?"on":""}" onclick="trocarAbaReb('${k}')">${t}</button>`).join("")}</div>
+      ${listaReb("prop",porProp)}${listaReb("dono",porDono)}${listaReb("lote",porLote)}
+    </div>`;
 
   // Nome do usuário
   const user=await authUser();
@@ -1148,12 +1176,7 @@ async function telaInicio(){
     </div>
 
     <div class="home-sec">${ico("boi")}Rebanho hoje<span class="hs-mais" onclick="abrirAnimaisOperacional()">Ver animais ›</span></div>
-    <div class="card" style="cursor:default">
-      <div class="reb-total"><b>${ativos.length}</b><span>${ativos.length===1?"animal ativo":"animais ativos"}</span></div>
-      ${grupoReb("Por dono",porDono)}
-      ${grupoReb("Por propriedade",porProp)}
-      ${grupoReb("Por lote",porLote)}
-    </div>
+    ${blocoRebanho}
 
     <div class="home-sec">${ico("carteira")}Financeiro ${ano}<span class="hs-mais" onclick="menuFinanceiro()">Detalhes ›</span></div>
     <div class="fin-home">
@@ -1164,6 +1187,17 @@ async function telaInicio(){
       <div class="fh" onclick="menuFinanceiro()"><div class="l">Custos + despesas</div><div class="v neg">${homeMoney(despesas)}</div></div>
     </div>
 </div>`;
+}
+/* V143: abas e detalhes do bloco "Rebanho hoje" */
+function trocarAbaReb(k){
+  try{localStorage.setItem("rebanho_home_aba",k);}catch(_){}
+  document.querySelectorAll(".reb-abas button").forEach((b,i)=>b.classList.toggle("on",["prop","dono","lote"][i]===k));
+  document.querySelectorAll(".reb-lista").forEach(l=>l.classList.toggle("on",l.dataset.reb===k));
+}
+function abrirRebDet(el,id){
+  const d=document.getElementById(id);if(!d)return;
+  const on=!d.classList.contains("on");d.classList.toggle("on",on);el.classList.toggle("aberto",on);
+  el.style.borderBottom=on?"none":"";
 }
 /* ======================= V141: ATALHOS DA PÁGINA INICIAL ======================= */
 // Abre a lista de Animais já filtrada (ex.: por dono ou por lote)
@@ -1843,7 +1877,7 @@ async function verLote(id){
   const animais=_todosAn.filter(a=>a.loteAtualId===id&&a.status==="Ativo");
   const nomeLote=l.nome;
   let lst=animais.length?"":`<div class="meta" style="padding:8px 4px">Nenhum animal ativo neste lote.</div>`;
-  for(const a of animais.sort((x,y)=>x.brinco.localeCompare(y.brinco)))lst+=linhaAnimal(a,nomeLote,false);
+  for(const a of animais.sort((x,y)=>(x.codigo||0)-(y.codigo||0)||String(x.brinco||"").localeCompare(String(y.brinco||""))))lst+=linhaAnimal(a,nomeLote,false); // V144: animal sem brinco não trava a tela
   $t.innerHTML=`<button class="voltar" data-lista="lote:${l.id}" onclick="voltar()">‹ Voltar</button>
     <div class="card"><div class="row"><div class="ti" style="font-size:19px">${esc(l.nome)}</div>
       <button class="btn-fant" style="padding:4px 8px;color:var(--verde);font-weight:700" onclick="formEditarLote('${id}')">✎ Editar</button></div>
@@ -3141,8 +3175,22 @@ async function finRelatorios(){
     ${linhaDRE("📌 Fornecedores — a pagar",aPagar)}
     <div class="h3">Receitas por categoria</div>${porCat("receita")}
     <div class="h3">Despesas por categoria</div>${porCat("despesa")}
+    ${custoPorLoteHtml(lancs,lotes,animais)}
     <div class="h3">Partidas do período (débito / crédito)</div>
     ${razao.length?verMais(razao,"lançamento(s)"):`<div class="meta" style="padding:2px 4px 8px">Sem lançamentos no período.</div>`}`;
+}
+
+// V144: custos de produção ligados a lotes (aplicações, consumos e lançamentos apropriados)
+function custoPorLoteHtml(lancs,lotes,animais){
+  const mapa={};const soma=(k,v)=>{if(!(v>0))return;mapa[k]=(mapa[k]||0)+v;};
+  for(const l of lancs){
+    if(l.tipo!=="despesa"||(l.natureza!=="custo"&&l.classe!=="custo"))continue;
+    if(l.rateioLotes){for(const k in l.rateioLotes)soma(k,l.rateioLotes[k]);continue;}
+    if(l.apropriacaoTipo==="lote"&&l.apropriacaoId)soma(l.apropriacaoId,l.valor||0);
+    else if(l.apropriacaoTipo==="animal"&&l.apropriacaoId){const a=animais.find(x=>x.id===l.apropriacaoId);soma(a&&a.loteAtualId||"__sem",l.valor||0);}
+  }
+  const linhas=Object.entries(mapa).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="card row" style="cursor:default"><div class="ti" style="font-size:15px">${k==="__sem"?"Sem lote":esc((lotes.find(x=>x.id===k)||{}).nome||"Lote excluído")}</div><div style="font-weight:800;color:var(--perigo)">${moeda(v)}</div></div>`).join("");
+  return `<div class="h3">Custos de produção por lote</div>${linhas||`<div class="meta" style="padding:2px 4px 8px">Nenhum custo ligado a lotes no período. Aplicações de medicamentos e consumos do estoque com destino aparecem aqui.</div>`}`;
 }
 
 /* ======================= ESTOQUE DE INSUMOS ======================= */
@@ -3168,7 +3216,7 @@ async function telaEstoque(){
         <div class="meta">${esc(i.categoria||"")}${i.categoria?" · ":""}Saldo: <b style="color:${baixo?'#c0392b':'var(--texto)'}">${numFmt(i.saldo)} ${esc(i.unidade||"un")}</b> · ${moeda(i.custoMedio||0)}/${esc(i.unidade||"un")} · ${moeda(vv)}</div>
         <div style="margin-top:8px;display:flex;gap:10px">
           <button class="btn btn-sec" style="margin:0;flex:1" onclick="formEntradaInsumo('${i.id}')">＋ Entrada</button>
-          <button class="btn btn-sec" style="margin:0;flex:1" onclick="formConsumoInsumo('${i.id}')">－ Consumo</button>
+          <button class="btn btn-sec" style="margin:0;flex:1" onclick="formConsumoInsumo('${i.id}')">${(typeof ehMedicamentoEstoque==='function'&&ehMedicamentoEstoque(i))?'💉 Aplicar':'－ Consumo'}</button>
         </div></div>`;
     }).join(""):`<div class="meta" style="padding:2px 4px 8px">Nenhum item cadastrado neste grupo.</div>`;
     return `<div class="h3">${gic} ${gnome}</div>
@@ -3289,15 +3337,32 @@ async function salvarPagtoInsumo(movId){
 }
 async function formConsumoInsumo(id){
   const it=await get("insumos",id); if(!it){telaEstoque();return;}
+  if(ehMedicamentoEstoque(it))return formAplicacao({voltar:"estoque",medId:id}); // V144: remédio/vacina = aplicação
   if((it.saldo||0)<=0)return alert("Sem saldo para consumir. Registre uma entrada primeiro.");
+  const {propriedades,lotes,pastos,grupos,animais}=await tudo();
+  const op=(arr,lbl)=>`<option value="">— selecione —</option>`+arr.map(x=>`<option value="${x.id}">${esc(lbl(x))}</option>`).join("");
+  window._consumoOpts={
+    propriedade:op(propriedades,p=>p.nome),pasto:op(pastos,p=>p.nome),lote:op(lotes,l=>l.nome),grupo:op(grupos||[],g=>g.nome),
+    animal:op(animais.filter(a=>a.status==="Ativo").sort((x,y)=>(x.codigo||0)-(y.codigo||0)),a=>rotuloCod(a))};
+  const sug=it.grupo==="manutencao"?"pasto":"lote";
   abrir(`<h2>Consumo — ${esc(it.nome)}</h2>
     <div class="meta" style="margin-bottom:8px">Saldo: <b>${numFmt(it.saldo)} ${esc(it.unidade||"un")}</b> · custo médio ${moeda(it.custoMedio||0)}</div>
     <label>Quantidade usada (${esc(it.unidade||"un")}) *</label><input id="co_qtd" inputmode="decimal" placeholder="Ex: 2">
-    <label>Data</label><input id="co_data" type="date" value="${hoje()}">
-    <label>Onde / para que (opcional)</label><input id="co_obs" placeholder="Ex: lote Maiores, cerca do pasto Serra…">
-    <div class="meta" style="margin-top:6px">O valor consumido (custo médio × quantidade) vira <b>despesa</b> do período.</div>
+    <label>Data</label><input id="co_data" type="date" value="${hoje()}" max="${hoje()}">
+    <label>Usado em *</label>
+    <select id="co_apr_tipo" onchange="trocarDestinoConsumo()">
+      ${[["propriedade","Propriedade"],["pasto","Pasto"],["lote","Lote"],["grupo","Grupo"],["animal","Animal"]].map(([k,t])=>`<option value="${k}" ${k===sug?"selected":""}>${t}</option>`).join("")}
+    </select>
+    <select id="co_apr_id" style="margin-top:8px"></select>
+    <label>Observação (opcional)</label><input id="co_obs" placeholder="${it.grupo==="manutencao"?"Ex: conserto da cerca do pasto Serra":"Ex: cocho do lote Bezerras"}">
+    <div class="meta" style="margin-top:6px">O valor consumido (custo médio × quantidade) vira <b>custo de produção</b>, ligado ao destino escolhido, com a partida D Custo de produção / C Estoque de insumos.</div>
     <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
       <button class="btn" onclick="salvarConsumoInsumo('${id}')">Registrar consumo</button></div>`);
+  trocarDestinoConsumo();
+}
+function trocarDestinoConsumo(){
+  const t=val("co_apr_tipo")||"propriedade",sel=document.getElementById("co_apr_id");
+  if(sel&&window._consumoOpts)sel.innerHTML=window._consumoOpts[t]||"";
 }
 async function salvarConsumoInsumo(id){
   const qtd=numBR("co_qtd");
@@ -3316,6 +3381,7 @@ async function salvarConsumoInsumo(id){
 }
 async function excluirMovInsumo(movId){
   const m=await get("insumo_mov",movId); if(!m){telaEstoque();return;}
+  if(m.aplicacaoId)return alert("Este consumo veio de uma aplicação de medicamento. Para desfazer, exclua a aplicação no histórico de manejo (Manejo › Histórico) ou na ficha do animal: o estoque e o custo voltam sozinhos.");
   if(!confirm("Excluir este movimento? O saldo e o custo médio serão recalculados."))return;
   if(m.tipo==="consumo"){
     const lancs=(await getAll("lancamentos")).filter(l=>l.origem==="consumo_insumo"&&l.refId===movId);
@@ -3838,33 +3904,7 @@ async function salvarEdicaoAnimal(id){
   fechar(); verAnimal(id);
 }
 
-async function formMedicarLote(loteId){
-  const l=await get("lotes",loteId);
-  const medicamentos=await listaMedicamentos();
-  const ativos=(await getAll("animais")).filter(a=>a.loteAtualId===loteId&&a.status==="Ativo").length;
-  if(!medicamentos.length)return abrir(semMedicamentoHtml("💊 Medicamento no lote"));
-  const optMed=`<option value="">— selecione —</option>`+optMedicamentos(medicamentos);
-  const optVia=VIAS.map(v=>`<option value="${v}">${v}</option>`).join("");
-  abrir(`<h2>💊 Medicamento no lote inteiro</h2>
-    <div class="meta" style="margin-bottom:6px">Lote: <b>${esc(l.nome)}</b> · aplica em <b>${ativos}</b> animal(is) ativo(s).</div>
-    <label>Medicamento *</label><select id="ml_med">${optMed}</select>
-    <label>Via de aplicação</label><select id="ml_via">${optVia}</select>
-    <label>Dose (opcional)</label><input id="ml_dose" placeholder="Ex: 5 ml">
-    <label>Data e hora</label>
-    <div class="lado"><input id="ml_data" type="date" value="${hoje()}"><input id="ml_hora" type="time" value="${horaAgora()}"></div>
-    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
-      <button class="btn" onclick="salvarMedicarLote('${loteId}')">Aplicar</button></div>`);
-}
-async function salvarMedicarLote(loteId){
-  const medId=(document.getElementById("ml_med")||{}).value||null;
-  if(!medId)return alert("Selecione o medicamento.");
-  const via=val("ml_via"),dose=val("ml_dose"),data=val("ml_data"),hora=val("ml_hora");
-  const ativos=(await getAll("animais")).filter(a=>a.loteAtualId===loteId&&a.status==="Ativo");
-  for(const a of ativos)await registrarEvento(a.id,"Medicamento",data,"",{hora,medicamentoId:medId,via,dose});
-  const nome=(await get("insumos",medId)||{}).nome||"Medicamento";
-  fechar();verLote(loteId);alert(`"${nome}" registrado em ${ativos.length} animal(is).`);
-}
-
+async function formMedicarLote(loteId){return formAplicacao({voltar:"lote",loteId});}
 async function formMover(id){
   if(!(await podeUsarApp("Mover animal de lote")))return;const a=await get("animais",id);
   const {propriedades,lotes}=await tudo();const outros=lotes.filter(l=>l.id!==a.loteAtualId);
@@ -3941,7 +3981,7 @@ async function telaManejo(){
       ${sec("Outro","📌","Outros eventos")}
     </div>`;
 }
-async function telaMedicamentosManejo(){
+async function telaMedicamentosManejo(medPre){
   if(!(await podeUsarApp("Acessar medicamentos e vacinação")))return;
   topoPagina();
   const {propriedades,lotes,animais,medicamentos,eventos}=await tudo();
@@ -3956,7 +3996,7 @@ async function telaMedicamentosManejo(){
   const animalPorId=new Map(animais.map(a=>[a.id,a]));
   const grupos=new Map();
   for(const e of eventos.filter(e=>e.tipo==="Medicamento")){
-    const k=[e.data||"",e.hora||"",e.medicamentoId||"",e.via||"",e.dose||"",e.detalhes||""].join("|");
+    const k=e.aplicacaoId||[e.data||"",e.hora||"",e.medicamentoId||"",e.via||"",e.dose||"",e.detalhes||""].join("|");
     if(!grupos.has(k))grupos.set(k,{e,ids:[]});
     grupos.get(k).ids.push(e.animalId);
   }
@@ -3968,7 +4008,7 @@ async function telaMedicamentosManejo(){
     return `<b>${an.length} animais</b>${lotesN.length<=2?` · ${lotesN.map(esc).join(", ")}`:""}`;
   };
   const itensHist=regs.map(({e,ids})=>`<div class="manejo-reg"><div class="mr-top"><div class="mr-title">${esc(nomeMed(e.medicamentoId))}</div><div class="mr-date">${fmt(e.data)}${e.hora?` · ${esc(e.hora)}`:""}</div></div>
-    <div class="mr-meta">${quem(ids)}${e.via||e.dose?`<br>${[e.via,e.dose].filter(Boolean).map(esc).join(" · ")}`:""}${e.detalhes?`<br>${esc(e.detalhes)}`:""}</div></div>`);
+    <div class="mr-meta">${quem(ids)}${e.via||e.dose?`<br>${[e.via,e.dose?(e.doseQtd&&ids.length>1?`${e.dose} por animal · total ${numFmt(e.doseQtd*ids.length)} ${e.unidade||""}`:e.dose):""].filter(Boolean).map(esc).join(" · ")}`:""}${e.aplicacaoId?`<br><span style="color:var(--verde)">✓ baixa no estoque</span>`:""}${e.detalhes?`<br>${esc(e.detalhes)}`:""}</div></div>`);
   const totalAnimais=regs.reduce((s,r)=>s+r.ids.length,0);
 
   $t.innerHTML=`<button class="voltar" onclick="telaManejo()">‹ Manejo</button>
@@ -3976,33 +4016,11 @@ async function telaMedicamentosManejo(){
     <div class="meta" style="margin:0 4px 14px">Registre as aplicações e consulte o que já foi aplicado. Os medicamentos e vacinas são cadastrados no <a href="#" onclick="event.preventDefault();gerenciarMedicamentos()" style="color:var(--verde);font-weight:600">Estoque de Insumos</a>.</div>
 
     <div class="med-acoes">
-      <button type="button" class="med-acao-btn" onclick="alternarPainelMedicamentos('aplicacao')">
+      <button type="button" class="med-acao-btn" onclick="formAplicacao({voltar:'pagina'})">
         <span class="med-acao-ico">💉</span>
-        <span class="med-acao-conteudo"><strong>Registrar aplicação</strong><small>Aplicar medicamento ou vacina</small></span>
+        <span class="med-acao-conteudo"><strong>Registrar aplicação</strong><small>Aplica, dá baixa no estoque e lança o custo</small></span>
         <span class="med-acao-seta">›</span>
       </button>
-    </div>
-
-    <div id="mp_painel_aplicacao" class="card" style="display:none;padding:18px;margin-bottom:18px">
-      <div class="h3" style="margin:0 0 10px">Registrar aplicação</div>
-      ${medicamentos.length?`
-      <label>Aplicar em *</label>
-      <select id="mp_alvo" onchange="toggleAlvoMedicamentoPagina()">
-        <option value="animal">Um animal específico</option>
-        <option value="lote">Lote inteiro</option>
-      </select>
-      <div id="mp_grp_animal"><label>Animal *</label><select id="mp_animal">${optAnimais?`<option value="">— selecione —</option>${optAnimais}`:`<option value="">— nenhum animal ativo —</option>`}</select></div>
-      <div id="mp_grp_lote" style="display:none"><label>Lote *</label><select id="mp_lote">${optLotes||`<option value="">— nenhum lote —</option>`}</select></div>
-      <label>Medicamento / vacina *</label>
-      <select id="mp_med">${optMed}</select>
-      <label>Data e hora</label>
-      <div class="lado"><input id="mp_data" type="date" value="${hoje()}" max="${hoje()}"><input id="mp_hora" type="time" value="${horaAgora()}"></div>
-      <label>Via de aplicação</label><select id="mp_via">${VIAS.map(v=>`<option value="${v}">${v}</option>`).join("")}</select>
-      <label>Dose (opcional)</label><input id="mp_dose" placeholder="Ex: 5 mL, 1 dose, 2 mL/50 kg">
-      <label>Informações adicionais (opcional)</label><textarea id="mp_obs" rows="3" placeholder="Ex: reforço, lote/validade do frasco, quem aplicou…"></textarea>
-      <button class="btn" style="margin-top:16px" onclick="salvarMedicamentoManejoPagina()">Registrar aplicação</button>`
-      :`<div class="meta">Nenhum medicamento ou vacina no estoque ainda. Cadastre o produto no Estoque de Insumos para registrar a aplicação.</div>
-      <button class="btn" style="margin-top:14px" onclick="formNovoInsumo('gado',null,'Medicamento')">Cadastrar no estoque</button>`}
     </div>
 
     <div class="card" style="padding:18px;margin-bottom:18px;cursor:default">
@@ -4010,6 +4028,168 @@ async function telaMedicamentosManejo(){
       <div class="meta" style="margin-bottom:8px">${regs.length?`${regs.length} aplicação(ões) · ${totalAnimais} dose(s) em animais`:"Nenhuma aplicação registrada ainda."}</div>
       ${verMais(itensHist,"aplicação(ões)")}
     </div>`;
+  if(medPre)formAplicacao({voltar:"pagina",medId:medPre});
+}
+
+/* ======================= V144: APLICAÇÃO INTEGRADA AO ESTOQUE =======================
+   Uma aplicação de medicamento/vacina faz tudo de uma vez:
+   histórico de cada animal + baixa no estoque + custo de produção (Sanidade) ligado aos
+   animais/lote/grupo + partida D Custo de produção / C Estoque de insumos.
+   Sem saldo suficiente no estoque, a aplicação não é registrada. */
+let _apCtx={};
+async function formAplicacao(opts){
+  if(!(await podeUsarApp("Registrar aplicação de medicamento")))return;
+  _apCtx=Object.assign({voltar:"pagina"},opts||{});
+  const {propriedades,lotes,animais,grupos,grupo_animais}=await tudo();
+  const meds=await listaMedicamentos();
+  if(!meds.length)return abrir(semMedicamentoHtml("Registrar aplicação"));
+  if(!meds.some(m=>(m.saldo||0)>0))return abrir(`<h2>Registrar aplicação</h2>
+    <div class="meta">Nenhum medicamento ou vacina com saldo no estoque. Registre a entrada (compra) do produto no Estoque de Insumos antes de aplicar.</div>
+    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
+      <button class="btn" onclick="atalhoEstoque()">Entrada no estoque</button></div>`);
+  const ativos=animais.filter(a=>a.status==="Ativo").sort((x,y)=>(x.codigo||0)-(y.codigo||0));
+  const nomeLote=id=>(lotes.find(l=>l.id===id)||{}).nome||"—";
+  const ativosIds=new Set(ativos.map(a=>a.id));
+  const qtdGrupo=gid=>new Set(grupo_animais.filter(v=>v.grupoId===gid&&ativosIds.has(v.animalId)).map(v=>v.animalId)).size;
+  const optAn=`<option value="">— selecione —</option>`+ativos.map(a=>`<option value="${a.id}" ${a.id===_apCtx.animalId?"selected":""}>${esc(rotuloCod(a))} — ${esc(nomeLote(a.loteAtualId))}</option>`).join("");
+  const optLt=`<option value="">— selecione —</option>`+lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);const n=ativos.filter(a=>a.loteAtualId===l.id).length;return`<option value="${l.id}" ${l.id===_apCtx.loteId?"selected":""}>${esc(l.nome)}${p&&propriedades.length>1?` — ${esc(p.nome)}`:""} (${n})</option>`;}).join("");
+  const optGr=`<option value="">— selecione —</option>`+(grupos||[]).map(g=>`<option value="${g.id}">${esc(g.nome)} (${qtdGrupo(g.id)})</option>`).join("");
+  const checks=ativos.map(a=>`<label class="ap-ck" data-b="${esc((rotuloCod(a)+" "+nomeLote(a.loteAtualId)).toLowerCase())}" style="display:flex;gap:10px;align-items:center;padding:8px 2px;border-bottom:1px solid var(--linha)">
+      <input type="checkbox" class="ap_multi" value="${a.id}" onchange="resumoAplicacao()" style="width:20px;height:20px;flex:0 0 auto">
+      <span><b>${esc(rotuloCod(a))}</b><span class="meta" style="display:block">${esc(nomeLote(a.loteAtualId))}</span></span></label>`).join("");
+  const optMed=`<option value="">— selecione —</option>`+meds.map(m=>{const sem=(m.saldo||0)<=0;
+    return `<option value="${m.id}" ${sem?"disabled":""} ${m.id===_apCtx.medId&&!sem?"selected":""}>${esc(m.nome)}${m.marca?` · ${esc(m.marca)}`:""} — ${sem?"sem estoque":`estoque ${numFmt(m.saldo)} ${esc(m.unidade||"un")}`}</option>`;}).join("");
+  const alvo0=_apCtx.loteId?"lote":"animal";
+  abrir(`<h2>Registrar aplicação</h2>
+    <label>Aplicar em *</label>
+    <select id="ap_alvo" onchange="alvoAplicacao()">
+      <option value="animal" ${alvo0==="animal"?"selected":""}>Um animal</option>
+      <option value="varios">Vários animais</option>
+      <option value="grupo">Um grupo</option>
+      <option value="lote" ${alvo0==="lote"?"selected":""}>Lote inteiro</option>
+    </select>
+    <div id="ap_g_animal"><label>Animal *</label><select id="ap_animal" onchange="resumoAplicacao()">${optAn}</select></div>
+    <div id="ap_g_varios" style="display:none"><label>Animais *</label>
+      <input id="ap_busca" placeholder="Buscar por identificação ou lote…" oninput="filtrarChecksAplicacao()">
+      <div id="ap_cont" class="meta" style="margin:6px 2px">0 selecionado(s)</div>
+      <div style="max-height:240px;overflow:auto;border-top:1px solid var(--linha)">${checks||`<div class="meta" style="padding:10px 0">Nenhum animal ativo.</div>`}</div></div>
+    <div id="ap_g_grupo" style="display:none"><label>Grupo *</label><select id="ap_grupo" onchange="resumoAplicacao()">${optGr}</select></div>
+    <div id="ap_g_lote" style="display:none"><label>Lote *</label><select id="ap_lote" onchange="resumoAplicacao()">${optLt}</select></div>
+    <label>Medicamento / vacina *</label><select id="ap_med" onchange="resumoAplicacao()">${optMed}</select>
+    <label id="ap_dose_lbl">Dose por animal *</label><input id="ap_dose" inputmode="decimal" placeholder="Ex: 5" oninput="resumoAplicacao()">
+    <label>Via de aplicação</label><select id="ap_via">${VIAS.map(v=>`<option value="${v}">${v}</option>`).join("")}</select>
+    <label>Data e hora</label>
+    <div class="lado"><input id="ap_data" type="date" value="${hoje()}" max="${hoje()}"><input id="ap_hora" type="time" value="${horaAgora()}"></div>
+    <label>Observação (opcional)</label><input id="ap_obs" placeholder="Ex: reforço, lote/validade do frasco, quem aplicou…">
+    <div id="ap_resumo" class="card" style="margin-top:12px;padding:12px;cursor:default;background:var(--verde-lite);box-shadow:none"></div>
+    <div class="lado" style="margin-top:14px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
+      <button class="btn" onclick="salvarAplicacao()">Registrar</button></div>`);
+  alvoAplicacao();
+}
+function alvoAplicacao(){
+  const a=val("ap_alvo")||"animal";
+  ["animal","varios","grupo","lote"].forEach(k=>{const el=document.getElementById("ap_g_"+k);if(el)el.style.display=a===k?"block":"none";});
+  resumoAplicacao();
+}
+function filtrarChecksAplicacao(){
+  const t=(val("ap_busca")||"").toLowerCase();
+  document.querySelectorAll(".ap-ck").forEach(l=>l.style.display=!t||l.dataset.b.includes(t)?"flex":"none");
+}
+async function animaisDaAplicacao(){
+  const alvo=val("ap_alvo")||"animal";
+  const todos=await getAll("animais");const ativos=todos.filter(a=>a.status==="Ativo");
+  if(alvo==="animal"){const id=val("ap_animal");return {alvo,ids:id?[id]:[],refId:id||null};}
+  if(alvo==="varios"){const ids=[...document.querySelectorAll(".ap_multi:checked")].map(c=>c.value);return {alvo,ids,refId:null};}
+  if(alvo==="grupo"){const g=val("ap_grupo");if(!g)return {alvo,ids:[],refId:null};
+    const ok=new Set(ativos.map(a=>a.id));const vs=await getAll("grupo_animais");
+    return {alvo,ids:[...new Set(vs.filter(v=>v.grupoId===g&&ok.has(v.animalId)).map(v=>v.animalId))],refId:g};}
+  const l=val("ap_lote");return {alvo,ids:l?ativos.filter(a=>a.loteAtualId===l).map(a=>a.id):[],refId:l||null};
+}
+async function resumoAplicacao(){
+  const box=document.getElementById("ap_resumo");if(!box)return;
+  const cont=document.getElementById("ap_cont");if(cont)cont.textContent=document.querySelectorAll(".ap_multi:checked").length+" selecionado(s)";
+  const medId=val("ap_med");const it=medId?await get("insumos",medId):null;
+  const un=it?(it.unidade||"un"):"";
+  const lbl=document.getElementById("ap_dose_lbl");if(lbl)lbl.textContent=`Dose por animal${un?` (${un})`:""} *`;
+  const {ids}=await animaisDaAplicacao();const dose=numBR("ap_dose");
+  if(!it){box.innerHTML=`<div class="meta">Escolha o produto e a dose para ver o total e o custo.</div>`;return;}
+  const total=(dose>0?dose:0)*ids.length, saldo=it.saldo||0, custo=total*(it.custoMedio||0);
+  const falta=total>saldo+1e-9;
+  box.innerHTML=`<div class="meta">${ids.length} animal(is) × ${dose>0?numFmt(dose):"—"} ${esc(un)} = <b>${numFmt(total)} ${esc(un)}</b></div>
+    <div class="meta">Saldo no estoque: <b>${numFmt(saldo)} ${esc(un)}</b>${total>0&&!falta?` · fica ${numFmt(saldo-total)} ${esc(un)}`:""}</div>
+    <div class="meta">Custo (custo médio × total): <b>${moeda(custo)}</b> → custo de produção · Sanidade</div>
+    ${falta?`<div class="meta" style="color:var(--perigo);font-weight:700;margin-top:4px">Estoque insuficiente para esta aplicação.</div>`:""}`;
+}
+async function salvarAplicacao(){
+  const {alvo,ids,refId}=await animaisDaAplicacao();
+  if(alvo==="animal"&&!ids.length)return alert("Selecione o animal.");
+  if(alvo==="varios"&&!ids.length)return alert("Selecione pelo menos um animal.");
+  if(alvo==="grupo"&&!refId)return alert("Selecione o grupo.");
+  if(alvo==="lote"&&!refId)return alert("Selecione o lote.");
+  if(!ids.length)return alert(alvo==="grupo"?"Esse grupo não tem animais ativos.":"Esse lote não tem animais ativos.");
+  const medId=val("ap_med");if(!medId)return alert("Selecione o medicamento ou vacina.");
+  const it=await get("insumos",medId);if(!it)return alert("Produto não encontrado no estoque.");
+  const dose=numBR("ap_dose");if(dose==null||!(dose>0))return alert("Informe a dose por animal.");
+  const data=val("ap_data")||hoje(),hora=val("ap_hora"),via=val("ap_via"),obs=val("ap_obs");
+  if(data>hoje())return alert("A data da aplicação não pode ser no futuro.");
+  const un=it.unidade||"un",total=dose*ids.length,saldo=it.saldo||0;
+  if(saldo<=0)return alert(`Não há ${it.nome} no estoque. Registre a entrada (compra) no Estoque de Insumos antes de aplicar.`);
+  if(total>saldo+1e-9)return alert(`Estoque insuficiente de ${it.nome}: a aplicação precisa de ${numFmt(total)} ${un} e o saldo é ${numFmt(saldo)} ${un}. Registre uma entrada no Estoque de Insumos ou diminua a quantidade de animais.`);
+  const r=await registrarAplicacaoEstoque({it,ids,alvo,refId,dose,data,hora,via,obs});
+  fechar();
+  alert(`Aplicação registrada em ${ids.length} animal(is). Baixa de ${numFmt(total)} ${un} no estoque${r.valor>0?` · custo ${moeda(r.valor)}`:""}.`);
+  const v=_apCtx.voltar;
+  if(v==="animal"&&_apCtx.animalId)return verAnimal(_apCtx.animalId);
+  if(v==="lote"&&_apCtx.loteId)return verLote(_apCtx.loteId);
+  if(v==="estoque")return telaEstoque();
+  return telaMedicamentosManejo();
+}
+async function registrarAplicacaoEstoque({it,ids,alvo,refId,dose,data,hora,via,obs}){
+  const un=it.unidade||"un",total=dose*ids.length,custoUnit=it.custoMedio||0,valor=total*custoUnit;
+  const aplicacaoId=uid(),movId=uid();
+  const {lotes,animais}=await tudo();
+  const anim=ids.map(id=>animais.find(a=>a.id===id)).filter(Boolean);
+  const rateioLotes={};for(const a of anim){const k=a.loteAtualId||"__sem";rateioLotes[k]=(rateioLotes[k]||0)+dose*custoUnit;}
+  const props=[...new Set(anim.map(a=>(lotes.find(l=>l.id===a.loteAtualId)||{}).propriedadeId||null))];
+  const propriedadeId=props.length===1?props[0]:null;
+  for(const id of ids)await registrarEvento(id,"Medicamento",data,obs,{hora,medicamentoId:it.id,via,dose:`${numFmt(dose)} ${un}`,doseQtd:dose,unidade:un,aplicacaoId,movId});
+  it.saldo=Math.max(0,(it.saldo||0)-total);await put("insumos",it);
+  await put("insumo_mov",{id:movId,insumoId:it.id,tipo:"consumo",qtd:total,unidade:un,custoUnit,data,
+    obs:`Aplicação em ${ids.length} animal(is)`,origem:"aplicacao",aplicacaoId,criadoEm:Date.now()});
+  if(valor>0){
+    const apr=alvo==="lote"?{apropriacaoTipo:"lote",apropriacaoId:refId}:alvo==="grupo"?{apropriacaoTipo:"grupo",apropriacaoId:refId}
+      :ids.length===1?{apropriacaoTipo:"animal",apropriacaoId:ids[0]}:{apropriacaoTipo:"animais",apropriacaoId:null,apropriacaoIds:ids.slice()};
+    await put("lancamentos",{id:uid(),tipo:"despesa",natureza:"custo",classe:"custo",categoria:"Sanidade",valor,data,
+      descricao:`Aplicação ${it.nome} (${numFmt(total)} ${un}) · ${ids.length} animal(is)`,propriedadeId,pago:true,
+      origem:"consumo_insumo",refId:movId,aplicacaoId,rateioLotes,contaV144:true,...apr,criadoEm:Date.now()});
+  }
+  return {aplicacaoId,movId,valor};
+}
+// Excluir animais de uma aplicação devolve ao estoque a dose deles e ajusta o custo
+let _ajustandoAplicacao=false;
+async function ajustarAplicacaoAposExclusao(aplicacaoId){
+  if(_ajustandoAplicacao||!aplicacaoId)return;
+  _ajustandoAplicacao=true;
+  try{
+    const restantes=(await getAll("eventos")).filter(e=>e.aplicacaoId===aplicacaoId);
+    const mov=(await getAll("insumo_mov")).find(m=>m.aplicacaoId===aplicacaoId);if(!mov)return;
+    const lanc=(await getAll("lancamentos")).find(l=>l.origem==="consumo_insumo"&&l.refId===mov.id);
+    if(!restantes.length){
+      if(lanc)await del("lancamentos",lanc.id);
+      await del("insumo_mov",mov.id);
+    }else{
+      const novaQtd=restantes.reduce((s,e)=>s+(Number(e.doseQtd)||0),0);
+      const fator=mov.qtd>0?novaQtd/mov.qtd:0;
+      mov.qtd=novaQtd;mov.obs=`Aplicação em ${restantes.length} animal(is)`;await put("insumo_mov",mov);
+      if(lanc){lanc.valor=novaQtd*(mov.custoUnit||0);
+        if(lanc.rateioLotes)for(const k in lanc.rateioLotes)lanc.rateioLotes[k]*=fator;
+        if(lanc.apropriacaoIds)lanc.apropriacaoIds=lanc.apropriacaoIds.filter(id=>restantes.some(e=>e.animalId===id));
+        lanc.descricao=lanc.descricao.replace(/\(([\d.,]+) ([^)]*)\) · \d+ animal\(is\)/,`(${numFmt(novaQtd)} $2) · ${restantes.length} animal(is)`);
+        await put("lancamentos",lanc);}
+    }
+    await reconstruirInsumo(mov.insumoId);
+  }catch(e){console.error("Ajuste da aplicação V144:",e);}
+  finally{_ajustandoAplicacao=false;}
 }
 function alternarPainelMedicamentos(painel){
   const alvo=document.getElementById("mp_painel_aplicacao");
@@ -4129,6 +4309,7 @@ async function salvarTrocaMultipla(){
 }
 
 async function formManejo(tipo){
+  if(tipo==="Medicamento")return formAplicacao({voltar:"manejo"}); // V144: aplicação integrada ao estoque
   const {propriedades,lotes,animais,medicamentos,grupos,grupo_animais}=await tudo();
   if(!lotes.length){fechar();return alert("Cadastre lote e animais primeiro.");}
   const ativos=animais.filter(a=>a.status==="Ativo").sort((x,y)=>(x.codigo||0)-(y.codigo||0));
@@ -4286,7 +4467,13 @@ async function editarGrupoManejo(tipo,idsCsv){
   const medicamentos=await listaMedicamentos();
   if(ev.medicamentoId&&!medicamentos.some(m=>m.id===ev.medicamentoId)){const x=await get("insumos",ev.medicamentoId);if(x)medicamentos.unshift(x);}
   let campos="";
-  if(tipo==="Medicamento"){
+  if(tipo==="Medicamento"&&ev.aplicacaoId){
+    const m=medicamentos.find(x=>x.id===ev.medicamentoId);
+    campos=`<div class="card" style="cursor:default;background:var(--verde-lite);box-shadow:none;padding:12px"><b>${esc(m?m.nome:"Medicamento")}</b> · ${esc(ev.dose||"")} por animal
+        <div class="meta" style="margin-top:4px">Esta aplicação deu baixa no estoque. Para trocar o produto ou a dose, exclua e registre de novo.</div></div>
+      <label>Via de aplicação</label><select id="em_via">${VIAS.map(v=>`<option value="${v}" ${ev.via===v?"selected":""}>${v}</option>`).join("")}</select>
+      <label>Observação (opcional)</label><input id="em_obs" value="${esc(ev.detalhes||"")}">`;
+  }else if(tipo==="Medicamento"){
     const optMed=optMedicamentos(medicamentos,ev.medicamentoId)||`<option value="">— nenhum —</option>`;
     campos=`<label>Medicamento</label><select id="em_med">${optMed}</select>
       <label>Via de aplicação</label><select id="em_via">${VIAS.map(v=>`<option value="${v}" ${ev.via===v?"selected":""}>${v}</option>`).join("")}</select>
@@ -4308,7 +4495,16 @@ async function editarGrupoManejo(tipo,idsCsv){
 async function salvarGrupoManejo(tipo,idsCsv){
   const ids=idsCsv.split(",");
   const patch={data:val("em_data"),hora:val("em_hora")};
-  if(tipo==="Medicamento"){
+  if(patch.data>hoje())return alert("A data não pode ser no futuro.");
+  if(tipo==="Medicamento"&&!document.getElementById("em_med")){
+    patch.via=val("em_via");patch.detalhes=val("em_obs");
+    const ev0=await get("eventos",ids[0]);
+    if(ev0&&ev0.aplicacaoId){ // mantém estoque e custo na mesma data da aplicação
+      const mov=(await getAll("insumo_mov")).find(m=>m.aplicacaoId===ev0.aplicacaoId);
+      if(mov&&mov.data!==patch.data){mov.data=patch.data;await put("insumo_mov",mov);
+        const l=(await getAll("lancamentos")).find(x=>x.origem==="consumo_insumo"&&x.refId===mov.id);if(l){l.data=patch.data;await put("lancamentos",l);}}
+    }
+  }else if(tipo==="Medicamento"){
     patch.medicamentoId=(document.getElementById("em_med")||{}).value||null;
     patch.via=val("em_via");patch.dose=val("em_dose");patch.detalhes=val("em_obs");
   }else if(tipo==="Outro"){
@@ -4332,28 +4528,7 @@ async function excluirGrupoManejo(tipo,idsCsv){
 async function gerenciarMedicamentos(){fechar();aba="painel";marcarNav("painel");telaEstoque();}
 async function formEditarMedicamento(id){if(await get("insumos",id))return formNovoInsumo(null,id);gerenciarMedicamentos();}
 
-async function formMedicarAnimal(id){
-  const a=await get("animais",id);
-  const medicamentos=await listaMedicamentos();
-  if(!medicamentos.length)return abrir(semMedicamentoHtml("💊 Medicar"));
-  const optMed=`<option value="">— selecione —</option>`+optMedicamentos(medicamentos);
-  const optVia=VIAS.map(v=>`<option value="${v}">${v}</option>`).join("");
-  abrir(`<h2>💊 Medicar — ${codAnimal(a)}</h2>
-    <label>Medicamento *</label><select id="md_med">${optMed}</select>
-    <label>Via de aplicação</label><select id="md_via">${optVia}</select>
-    <label>Dose (opcional)</label><input id="md_dose" placeholder="Ex: 5 ml">
-    <label>Data e hora</label>
-    <div class="lado"><input id="md_data" type="date" value="${hoje()}"><input id="md_hora" type="time" value="${horaAgora()}"></div>
-    <label>Observação (opcional)</label><input id="md_obs" placeholder="Ex: lote de compra, reforço…">
-    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
-      <button class="btn" onclick="salvarMedicarAnimal('${id}')">Salvar</button></div>`);
-}
-async function salvarMedicarAnimal(id){
-  const medId=(document.getElementById("md_med")||{}).value||null;
-  if(!medId)return alert("Selecione o medicamento.");
-  await registrarEvento(id,"Medicamento",val("md_data"),val("md_obs"),{hora:val("md_hora"),medicamentoId:medId,via:val("md_via"),dose:val("md_dose")});
-  fechar();verAnimal(id);
-}
+async function formMedicarAnimal(id){return formAplicacao({voltar:"animal",animalId:id});}
 async function castrarAnimal(id){
   const a=await get("animais",id);if(!a)return;
   if(a.sexo!=="M")return alert("Só é possível registrar castração em machos.");

@@ -64,6 +64,7 @@
       const l=await get('lancamentos',id);
       if(l&&(l.origem==='venda_animais'||l.origem==='venda_animal')&&typeof finDetalheVendaAnimais==='function')return finDetalheVendaAnimais(id);
       if(l&&l.origem==='compra_animal'&&typeof editarCompraAnimalV116==='function')return editarCompraAnimalV116(l.refId);
+      if(l&&l.origem==='consumo_insumo')return alert(l.aplicacaoId?'Custo gerado por uma aplicação de medicamento (baixa no estoque). Para corrigir, exclua a aplicação no histórico de manejo e registre de novo.':'Custo gerado por um consumo do Estoque de Insumos. Para corrigir, exclua o movimento no estoque e registre de novo.');
       if(l&&l.origem==='morte_animal')return alert('Perda gerada automaticamente pelo registro de morte (custo de estoque do animal). Para corrigir, ajuste o custo do animal ou exclua o evento "Morte" no histórico dele.');
       return abrirFormClassificado(id);
     }

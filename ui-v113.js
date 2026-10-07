@@ -53,7 +53,7 @@
     const aPagarIns=movs.filter(m=>m.tipo==='entrada'&&!m.pago).reduce((s,m)=>s+(m.valorTotal||0),0);
     const bloco=(gkey,gnome,gic)=>{
       const itens=insumos.filter(i=>i.grupo===gkey),valor=itens.reduce((s,i)=>s+(i.saldo||0)*(i.custoMedio||0),0);
-      const linhas=itens.length?itens.map(i=>{const vv=(i.saldo||0)*(i.custoMedio||0),baixo=(i.saldo||0)<=0;return `<div class="card"><div class="row"><div class="ti" style="font-size:15px">${esc(i.nome)}${i.marca?` <span class="meta" style="font-weight:500">· ${esc(i.marca)}</span>`:''}</div><div style="white-space:nowrap"><button class="btn-fant" style="padding:2px 6px;color:var(--verde)" onclick="formEditarInsumo('${i.id}')">✎</button><button class="btn-fant" style="padding:2px 6px;color:var(--perigo)" onclick="excluirInsumo('${i.id}')">✕</button></div></div>${(i.tipoMed||i.fabricante)?`<div class="meta">${[i.tipoMed,i.fabricante].filter(Boolean).map(esc).join(' · ')}</div>`:''}<div class="meta">${esc(i.categoria||'')}${i.categoria?' · ':''}Saldo: <b style="color:${baixo?'#c0392b':'var(--texto)'}">${numFmt(i.saldo)} ${esc(i.unidade||'un')}</b> · ${moeda(i.custoMedio||0)}/${esc(i.unidade||'un')} · ${moeda(vv)}</div><div style="margin-top:8px;display:flex;gap:10px"><button class="btn btn-sec" style="margin:0;flex:1" onclick="formEntradaInsumo('${i.id}')">＋ Entrada</button><button class="btn btn-sec" style="margin:0;flex:1" onclick="formConsumoInsumo('${i.id}')">－ Consumo</button></div></div>`}).join(''):`<div class="meta" style="padding:4px 2px 10px">Nenhum item cadastrado nesta seção.</div>`;
+      const linhas=itens.length?itens.map(i=>{const vv=(i.saldo||0)*(i.custoMedio||0),baixo=(i.saldo||0)<=0;return `<div class="card"><div class="row"><div class="ti" style="font-size:15px">${esc(i.nome)}${i.marca?` <span class="meta" style="font-weight:500">· ${esc(i.marca)}</span>`:''}</div><div style="white-space:nowrap"><button class="btn-fant" style="padding:2px 6px;color:var(--verde)" onclick="formEditarInsumo('${i.id}')">✎</button><button class="btn-fant" style="padding:2px 6px;color:var(--perigo)" onclick="excluirInsumo('${i.id}')">✕</button></div></div>${(i.tipoMed||i.fabricante)?`<div class="meta">${[i.tipoMed,i.fabricante].filter(Boolean).map(esc).join(' · ')}</div>`:''}<div class="meta">${esc(i.categoria||'')}${i.categoria?' · ':''}Saldo: <b style="color:${baixo?'#c0392b':'var(--texto)'}">${numFmt(i.saldo)} ${esc(i.unidade||'un')}</b> · ${moeda(i.custoMedio||0)}/${esc(i.unidade||'un')} · ${moeda(vv)}</div><div style="margin-top:8px;display:flex;gap:10px"><button class="btn btn-sec" style="margin:0;flex:1" onclick="formEntradaInsumo('${i.id}')">＋ Entrada</button><button class="btn btn-sec" style="margin:0;flex:1" onclick="formConsumoInsumo('${i.id}')">${(typeof ehMedicamentoEstoque==='function'&&ehMedicamentoEstoque(i))?'💉 Aplicar':'－ Consumo'}</button></div></div>`}).join(''):`<div class="meta" style="padding:4px 2px 10px">Nenhum item cadastrado nesta seção.</div>`;
       return `<section class="est113-sec" id="est113-${gkey}"><button class="est113-head" onclick="toggleEstoque113('est113-${gkey}')"><span class="est113-ico">${gic}</span><span class="est113-txt"><strong>${gnome}</strong><small>${itens.length} item(ns) · ${moeda(valor)}</small></span><span class="est113-chev">›</span></button><div class="est113-body"><button class="btn btn-sec" onclick="formNovoInsumo('${gkey}')">+ Novo item</button>${linhas}</div></section>`;
     };
     const hist=await histEstoque(insumos,movs);
@@ -70,10 +70,23 @@
     const qtd=numBR('co_qtd');if(qtd==null||qtd<=0)return alert('Informe a quantidade.');
     const it=await get('insumos',id);if(!it)return;
     if(qtd>(it.saldo||0)+1e-9)return alert('Quantidade maior que o saldo ('+numFmt(it.saldo)+' '+(it.unidade||'un')+').');
-    const custoUnit=it.custoMedio||0;it.saldo=(it.saldo||0)-qtd;await put('insumos',it);
-    const data=val('co_data'),obs=val('co_obs'),movId=uid();
-    await put('insumo_mov',{id:movId,insumoId:id,tipo:'consumo',qtd,unidade:it.unidade||'un',custoUnit,data,obs,criadoEm:Date.now()});
-    await put('lancamentos',{id:uid(),tipo:'despesa',natureza:'custo',categoria:custoCategoria(it),valor:qtd*custoUnit,classe:'custo',data,descricao:`Consumo ${it.nome} (${numFmt(qtd)} ${it.unidade||'un'})`,propriedadeId:null,pago:true,origem:'consumo_insumo',refId:movId,criadoEm:Date.now()});
+    const custoUnit=it.custoMedio||0;
+    const data=val('co_data')||hoje(),obs=val('co_obs'),movId=uid();
+    if(data>hoje())return alert('A data do consumo não pode ser no futuro.');
+    // V144: destino do custo (propriedade, pasto, lote, grupo ou animal)
+    const aprTipo=val('co_apr_tipo')||'propriedade',aprId=val('co_apr_id')||null;
+    if(document.getElementById('co_apr_tipo')&&!aprId)return alert('Selecione onde o item foi usado.');
+    const {lotes,pastos,animais}=await tudo();const valor=qtd*custoUnit;
+    let propriedadeId=null,rateioLotes=null;
+    if(aprTipo==='propriedade')propriedadeId=aprId;
+    else if(aprTipo==='pasto'){const pt=pastos.find(x=>x.id===aprId);propriedadeId=pt&&pt.propriedadeId||null;}
+    else if(aprTipo==='lote'){const l=lotes.find(x=>x.id===aprId);propriedadeId=l&&l.propriedadeId||null;rateioLotes={[aprId]:valor};}
+    else if(aprTipo==='animal'){const an=animais.find(x=>x.id===aprId);const l=an&&lotes.find(x=>x.id===an.loteAtualId);propriedadeId=l&&l.propriedadeId||null;rateioLotes={[(an&&an.loteAtualId)||'__sem']:valor};}
+    else if(aprTipo==='grupo'){const vs=(await getAll('grupo_animais')).filter(v=>v.grupoId===aprId);const an=animais.filter(a=>a.status==='Ativo'&&vs.some(v=>v.animalId===a.id));
+      if(an.length){rateioLotes={};for(const x of an){const k=x.loteAtualId||'__sem';rateioLotes[k]=(rateioLotes[k]||0)+valor/an.length;}}}
+    it.saldo=(it.saldo||0)-qtd;await put('insumos',it);
+    await put('insumo_mov',{id:movId,insumoId:id,tipo:'consumo',qtd,unidade:it.unidade||'un',custoUnit,data,obs,apropriacaoTipo:aprTipo,apropriacaoId:aprId,criadoEm:Date.now()});
+    if(valor>0)await put('lancamentos',{id:uid(),tipo:'despesa',natureza:'custo',categoria:custoCategoria(it),valor,classe:'custo',data,descricao:`Consumo ${it.nome} (${numFmt(qtd)} ${it.unidade||'un'})`,propriedadeId,pago:true,origem:'consumo_insumo',refId:movId,apropriacaoTipo:aprTipo,apropriacaoId:aprId,rateioLotes,contaV144:true,criadoEm:Date.now()});
     fechar();telaEstoque();
   };
 
