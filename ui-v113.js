@@ -76,20 +76,18 @@
     const custoUnit=it.custoMedio||0;
     const data=val('co_data')||hoje(),obs=val('co_obs'),movId=uid();
     if(data>hoje())return alert('A data do consumo não pode ser no futuro.');
-    // V144: destino do custo (propriedade, pasto, lote, grupo ou animal)
-    const aprTipo=val('co_apr_tipo')||'propriedade',aprId=val('co_apr_id')||null;
-    if(document.getElementById('co_apr_tipo')&&!aprId)return alert('Selecione onde o item foi usado.');
-    const {lotes,pastos,animais}=await tudo();const valor=qtd*custoUnit;
-    let propriedadeId=null,rateioLotes=null;
-    if(aprTipo==='propriedade')propriedadeId=aprId;
-    else if(aprTipo==='pasto'){const pt=pastos.find(x=>x.id===aprId);propriedadeId=pt&&pt.propriedadeId||null;}
-    else if(aprTipo==='lote'){const l=lotes.find(x=>x.id===aprId);propriedadeId=l&&l.propriedadeId||null;rateioLotes={[aprId]:valor};}
-    else if(aprTipo==='animal'){const an=animais.find(x=>x.id===aprId);const l=an&&lotes.find(x=>x.id===an.loteAtualId);propriedadeId=l&&l.propriedadeId||null;rateioLotes={[(an&&an.loteAtualId)||'__sem']:valor};}
-    else if(aprTipo==='grupo'){const vs=(await getAll('grupo_animais')).filter(v=>v.grupoId===aprId);const an=animais.filter(a=>a.status==='Ativo'&&vs.some(v=>v.animalId===a.id));
-      if(an.length){rateioLotes={};for(const x of an){const k=x.loteAtualId||'__sem';rateioLotes[k]=(rateioLotes[k]||0)+valor/an.length;}}}
+    // V150: destino do custo — todo o rebanho ou vários(as) propriedades, pastos, lotes, grupos ou animais
+    const aprTipo=val('co_apr_tipo')||'rebanho';
+    const aprIds=[...document.querySelectorAll('.co_apr_ck:checked')].map(c=>c.value);
+    if(aprTipo!=='rebanho'&&!aprIds.length)return alert('Marque onde o item foi usado.');
+    const valor=qtd*custoUnit;
+    const {anim,propriedadeId}=await resolverDestinoConsumo(aprTipo,aprIds);
+    let rateioLotes=null;
+    if(anim.length){rateioLotes={};for(const x of anim){const k=x.loteAtualId||'__sem';rateioLotes[k]=(rateioLotes[k]||0)+valor/anim.length;}}
+    const aprId=aprIds.length===1?aprIds[0]:null;
     it.saldo=(it.saldo||0)-qtd;await put('insumos',it);
-    await put('insumo_mov',{id:movId,insumoId:id,tipo:'consumo',qtd,unidade:it.unidade||'un',custoUnit,data,obs,apropriacaoTipo:aprTipo,apropriacaoId:aprId,criadoEm:Date.now()});
-    if(valor>0)await put('lancamentos',{id:uid(),tipo:'despesa',natureza:'custo',categoria:custoCategoria(it),valor,classe:'custo',data,descricao:`Consumo ${it.nome} (${numFmt(qtd)} ${it.unidade||'un'})`,propriedadeId,pago:true,origem:'consumo_insumo',refId:movId,apropriacaoTipo:aprTipo,apropriacaoId:aprId,rateioLotes,contaV144:true,criadoEm:Date.now()});
+    await put('insumo_mov',{id:movId,insumoId:id,tipo:'consumo',qtd,unidade:it.unidade||'un',custoUnit,data,obs,apropriacaoTipo:aprTipo,apropriacaoId:aprId,apropriacaoIds:aprIds,animaisAtingidos:anim.length,criadoEm:Date.now()});
+    if(valor>0)await put('lancamentos',{id:uid(),tipo:'despesa',natureza:'custo',categoria:custoCategoria(it),valor,classe:'custo',data,descricao:`Consumo ${it.nome} (${numFmt(qtd)} ${it.unidade||'un'})`,propriedadeId,pago:true,origem:'consumo_insumo',refId:movId,apropriacaoTipo:aprTipo,apropriacaoId:aprId,apropriacaoIds:aprIds,rateioLotes,contaV144:true,criadoEm:Date.now()});
     fechar();telaEstoque();
   };
 

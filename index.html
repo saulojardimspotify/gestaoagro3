@@ -298,6 +298,9 @@
   .atalho:active{transform:scale(.97);}
   .atalho .at-ic{width:42px;height:42px;border-radius:50%;background:var(--verde-lite);color:var(--verde);display:flex;align-items:center;justify-content:center;}
   .atalho .at-ic svg.ico{width:22px;height:22px;}
+  /* V150: listas de marcar dentro dos formulários (não herdam o estilo de título do campo) */
+  label.co-ck,label.ap-ck{color:var(--texto,#1c2b20);font-size:15px;font-weight:400;margin:0;text-transform:none;letter-spacing:0;}
+  label.co-ck b,label.ap-ck b{color:var(--verde-esc);font-weight:700;}
   /* V149: lista do estoque no formato de catálogo */
   .est-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 2px 6px;}
   .est-top .meta{font-size:12.5px;} .est-novo{background:none;border:none;color:var(--verde);font-weight:800;font-size:15px;padding:6px 0;cursor:pointer;white-space:nowrap;flex:none;}
@@ -3453,29 +3456,78 @@ async function formConsumoInsumo(id){
   if(ehMedicamentoEstoque(it))return formAplicacao({voltar:"estoque",medId:id}); // V144: remédio/vacina = aplicação
   if((it.saldo||0)<=0)return alert("Sem saldo para consumir. Registre uma entrada primeiro.");
   const {propriedades,lotes,pastos,grupos,animais}=await tudo();
-  const op=(arr,lbl)=>`<option value="">— selecione —</option>`+arr.map(x=>`<option value="${x.id}">${esc(lbl(x))}</option>`).join("");
-  window._consumoOpts={
-    propriedade:op(propriedades,p=>p.nome),pasto:op(pastos,p=>p.nome),lote:op(lotes,l=>l.nome),grupo:op(grupos||[],g=>g.nome),
-    animal:op(animais.filter(a=>a.status==="Ativo").sort((x,y)=>(x.codigo||0)-(y.codigo||0)),a=>rotuloCod(a))};
-  const sug=it.grupo==="manutencao"?"pasto":"lote";
+  const ativos=animais.filter(a=>a.status==="Ativo").sort((x,y)=>(x.codigo||0)-(y.codigo||0));
+  const nomeLote=id=>(lotes.find(l=>l.id===id)||{}).nome||"—";
+  const nomeProp=id=>(propriedades.find(p=>p.id===id)||{}).nome||"";
+  const nAn=fn=>ativos.filter(fn).length;
+  // V150: listas para marcar vários destinos
+  window._consumoListas={
+    propriedade:propriedades.map(p=>({id:p.id,t:p.nome,s:`${nAn(a=>(lotes.find(l=>l.id===a.loteAtualId)||{}).propriedadeId===p.id)} animal(is)`})),
+    pasto:pastos.map(p=>({id:p.id,t:p.nome,s:[propriedades.length>1?nomeProp(p.propriedadeId):"",p.status==="Ocupado"&&p.loteId?`lote ${nomeLote(p.loteId)}`:(p.status==="Descanso"?"em descanso":"livre")].filter(Boolean).join(" · ")})),
+    lote:lotes.map(l=>({id:l.id,t:l.nome,s:`${nAn(a=>a.loteAtualId===l.id)} animal(is)${propriedades.length>1&&nomeProp(l.propriedadeId)?" · "+nomeProp(l.propriedadeId):""}`})),
+    grupo:(grupos||[]).map(g=>({id:g.id,t:g.nome,s:""})),
+    animal:ativos.map(a=>({id:a.id,t:rotuloCod(a),s:nomeLote(a.loteAtualId)}))};
+  const sug=it.grupo==="manutencao"?"pasto":"rebanho";
   abrir(`<h2>Consumo — ${esc(it.nome)}</h2>
     <div class="meta" style="margin-bottom:8px">Saldo: <b>${numFmt(it.saldo)} ${esc(it.unidade||"un")}</b> · custo médio ${moeda(it.custoMedio||0)}</div>
     <label>Quantidade usada (${esc(it.unidade||"un")}) *</label><input id="co_qtd" inputmode="decimal" placeholder="Ex: 2">
     <label>Data</label><input id="co_data" type="date" value="${hoje()}" max="${hoje()}">
     <label>Usado em *</label>
     <select id="co_apr_tipo" onchange="trocarDestinoConsumo()">
-      ${[["propriedade","Propriedade"],["pasto","Pasto"],["lote","Lote"],["grupo","Grupo"],["animal","Animal"]].map(([k,t])=>`<option value="${k}" ${k===sug?"selected":""}>${t}</option>`).join("")}
+      ${[["rebanho",`Todo o rebanho (${ativos.length} animais ativos)`],["propriedade","Propriedades"],["pasto","Pastos"],["lote","Lotes"],["grupo","Grupos"],["animal","Animais"]].map(([k,t])=>`<option value="${k}" ${k===sug?"selected":""}>${t}</option>`).join("")}
     </select>
-    <select id="co_apr_id" style="margin-top:8px"></select>
+    <div id="co_apr_box" style="display:none;margin-top:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 2px 4px">
+        <span id="co_apr_cont" class="meta">0 marcado(s)</span>
+        <button type="button" class="btn-fant" style="padding:4px 0;color:var(--verde);font-weight:700" onclick="marcarTodosDestinoConsumo()">Marcar todos</button></div>
+      <input id="co_apr_busca" placeholder="Buscar…" oninput="filtrarDestinoConsumo()" style="display:none;margin-bottom:6px">
+      <div id="co_apr_lista" style="max-height:240px;overflow:auto;border-top:1px solid var(--linha)"></div>
+    </div>
+    <div id="co_apr_resumo" class="meta" style="margin-top:6px"></div>
     <label>Observação (opcional)</label><input id="co_obs" placeholder="${it.grupo==="manutencao"?"Ex: conserto da cerca do pasto Serra":"Ex: cocho do lote Bezerras"}">
-    <div class="meta" style="margin-top:6px">O valor consumido (custo médio × quantidade) vira <b>custo de produção</b>, ligado ao destino escolhido, com a partida D Custo de produção / C Estoque de insumos.</div>
+    <div class="meta" style="margin-top:6px">O valor consumido (custo médio × quantidade) vira <b>custo de produção</b>, dividido entre os animais do destino, com a partida D Custo de produção / C Estoque de insumos.</div>
     <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
       <button class="btn" onclick="salvarConsumoInsumo('${id}')">Registrar consumo</button></div>`);
   trocarDestinoConsumo();
 }
 function trocarDestinoConsumo(){
-  const t=val("co_apr_tipo")||"propriedade",sel=document.getElementById("co_apr_id");
-  if(sel&&window._consumoOpts)sel.innerHTML=window._consumoOpts[t]||"";
+  const t=val("co_apr_tipo")||"rebanho",box=document.getElementById("co_apr_box"),lista=document.getElementById("co_apr_lista");
+  if(!box||!lista)return;
+  box.style.display=t==="rebanho"?"none":"block";
+  const b=document.getElementById("co_apr_busca");if(b){b.style.display=t==="animal"?"block":"none";b.value="";}
+  const arr=(window._consumoListas||{})[t]||[];
+  lista.innerHTML=arr.length?arr.map(x=>`<label class="co-ck" data-b="${esc((x.t+" "+x.s).toLowerCase())}" style="display:flex;gap:10px;align-items:center;padding:8px 2px;border-bottom:1px solid var(--linha)">
+      <input type="checkbox" class="co_apr_ck" value="${x.id}" onchange="resumoDestinoConsumo()" style="width:20px;height:20px;flex:0 0 auto">
+      <span><b>${esc(x.t)}</b>${x.s?`<span class="meta" style="display:block">${esc(x.s)}</span>`:""}</span></label>`).join(""):`<div class="meta" style="padding:10px 0">Nada cadastrado.</div>`;
+  resumoDestinoConsumo();
+}
+function filtrarDestinoConsumo(){const t=(val("co_apr_busca")||"").toLowerCase();document.querySelectorAll(".co-ck").forEach(l=>l.style.display=!t||l.dataset.b.includes(t)?"flex":"none");}
+function marcarTodosDestinoConsumo(){
+  const cks=[...document.querySelectorAll(".co-ck")].filter(l=>l.style.display!=="none").map(l=>l.querySelector("input"));
+  const todos=cks.every(c=>c.checked);cks.forEach(c=>c.checked=!todos);resumoDestinoConsumo();
+}
+// Resolve o destino marcado: animais atingidos, propriedade e divisão do custo por lote
+async function resolverDestinoConsumo(tipo,ids){
+  const {lotes,pastos,animais}=await tudo();const ativos=animais.filter(a=>a.status==="Ativo");
+  const propDoLote=id=>(lotes.find(l=>l.id===id)||{}).propriedadeId||null;
+  let anim=[],props=[];
+  if(tipo==="rebanho")anim=ativos;
+  else if(tipo==="propriedade"){anim=ativos.filter(a=>ids.includes(propDoLote(a.loteAtualId)));props=ids.slice();}
+  else if(tipo==="pasto"){const ps=pastos.filter(p=>ids.includes(p.id));const ls=ps.filter(p=>p.status==="Ocupado"&&p.loteId).map(p=>p.loteId);
+    anim=ativos.filter(a=>ls.includes(a.loteAtualId));props=[...new Set(ps.map(p=>p.propriedadeId).filter(Boolean))];}
+  else if(tipo==="lote")anim=ativos.filter(a=>ids.includes(a.loteAtualId));
+  else if(tipo==="grupo"){const vs=(await getAll("grupo_animais")).filter(v=>ids.includes(v.grupoId));anim=ativos.filter(a=>vs.some(v=>v.animalId===a.id));}
+  else if(tipo==="animal")anim=ativos.filter(a=>ids.includes(a.id));
+  if(!props.length)props=[...new Set(anim.map(a=>propDoLote(a.loteAtualId)).filter(Boolean))];
+  return {anim,propriedadeId:props.length===1?props[0]:null};
+}
+async function resumoDestinoConsumo(){
+  const t=val("co_apr_tipo")||"rebanho";const ids=[...document.querySelectorAll(".co_apr_ck:checked")].map(c=>c.value);
+  const c=document.getElementById("co_apr_cont");if(c)c.textContent=`${ids.length} marcado(s)`;
+  const r=document.getElementById("co_apr_resumo");if(!r)return;
+  if(t!=="rebanho"&&!ids.length){r.textContent="";return;}
+  const {anim}=await resolverDestinoConsumo(t,ids);
+  r.innerHTML=anim.length?`Custo dividido entre <b>${anim.length} animal(is)</b>.`:`Nenhum animal ativo nesse destino: o custo fica na propriedade, sem divisão por lote.`;
 }
 async function salvarConsumoInsumo(id){
   const qtd=numBR("co_qtd");
