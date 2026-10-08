@@ -298,6 +298,20 @@
   .atalho:active{transform:scale(.97);}
   .atalho .at-ic{width:42px;height:42px;border-radius:50%;background:var(--verde-lite);color:var(--verde);display:flex;align-items:center;justify-content:center;}
   .atalho .at-ic svg.ico{width:22px;height:22px;}
+  /* V149: lista do estoque no formato de catálogo */
+  .est-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 2px 6px;}
+  .est-top .meta{font-size:12.5px;} .est-novo{background:none;border:none;color:var(--verde);font-weight:800;font-size:15px;padding:6px 0;cursor:pointer;white-space:nowrap;flex:none;}
+  .est-item{padding:12px 0;border-top:1px solid var(--linha);}
+  .est-lin{display:grid;grid-template-columns:58px 1fr auto;gap:12px;align-items:center;cursor:pointer;}
+  .est-foto{width:58px;height:58px;border-radius:14px;background:var(--verde-lite);color:var(--verde);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .est-foto img{width:100%;height:100%;object-fit:cover;} .est-foto svg.ico{width:24px;height:24px;opacity:.8;}
+  .est-nome{font-weight:800;font-size:15.5px;color:var(--verde-esc);line-height:1.2;}
+  .est-sub{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.3;}
+  .est-saldo{text-align:right;} .est-saldo b{display:block;font-size:22px;font-weight:800;color:var(--verde);line-height:1;}
+  .est-saldo b.zero{color:var(--perigo);} .est-saldo span{font-size:12px;color:var(--muted);}
+  .est-acoes{display:flex;gap:10px;margin-top:10px;} .est-acoes .btn{margin:0;flex:1;padding:10px;font-size:15px;}
+  .est-ficha-foto{width:100%;max-height:220px;border-radius:16px;background:var(--verde-lite);color:var(--verde);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px;min-height:120px;}
+  .est-ficha-foto img{width:100%;max-height:220px;object-fit:cover;}
   /* V143: Rebanho hoje com abas */
   .reb-card{padding:16px 16px 6px;cursor:default;}
   .reb-total{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
@@ -793,6 +807,7 @@ const ICONES={
   livro:'<path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v15H5.5A1.5 1.5 0 0 0 4 19.5z"/><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H19v-3M8 7h7"/>',
   celular:'<rect x="6.5" y="2.5" width="11" height="19" rx="2.2"/><path d="M11 18h2"/>',
   info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.5h.01"/>',
+  camera:'<path d="M4 8h3l1.6-2.4h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.4"/>',
   chave:'<path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3 8-8-1.3-1.3a4 4 0 0 1-5-5l2.5 2.5 2-2z"/><path d="M3 21l6-6"/>',
   cadeado:'<rect x="4.5" y="10.5" width="15" height="10.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3M12 14.5v2.5"/>'
 };
@@ -3305,6 +3320,33 @@ async function telaEstoque(){
     <div class="h3">Últimos movimentos</div>
     ${await histEstoque(insumos,movs)}`;
 }
+/* V149: ficha do item de estoque (tocar na linha) e foto do produto */
+async function fichaInsumo(id){
+  const it=await get("insumos",id);if(!it)return telaEstoque();
+  const movs=(await getAll("insumo_mov")).filter(m=>m.insumoId===id);
+  const un=esc(it.unidade||"un"),med=typeof ehMedicamentoEstoque==="function"&&ehMedicamentoEstoque(it);
+  const info=[["Categoria",it.categoria],["Tipo",it.tipoMed],["Fabricante",it.fabricante],["Marca comercial",it.marca],["Observação",it.obs]].filter(x=>x[1]);
+  const hist=await histEstoque([it],movs);
+  abrir(`<h2>${esc(it.nome)}</h2>
+    <div class="est-ficha-foto" onclick="document.getElementById('in_foto_file').click()">${it.foto?`<img src="${it.foto}" alt="">`:`<div style="text-align:center">${ico("camera")}<div class="meta" style="margin-top:6px">Toque para adicionar foto</div></div>`}</div>
+    <input type="file" id="in_foto_file" accept="image/*" style="display:none" onchange="fotoInsumo(this,'${id}')">
+    ${it.foto?`<button class="btn-fant" style="color:var(--perigo);padding:0 0 8px" onclick="removerFotoInsumo('${id}')">Remover foto</button>`:""}
+    <div class="fin-cards" style="margin-bottom:8px">
+      <div class="fin-c"><div class="cl">Saldo</div><div class="cv">${numFmt(it.saldo||0)} ${un}</div></div>
+      <div class="fin-c"><div class="cl">Custo médio</div><div class="cv">${moeda(it.custoMedio||0)}/${un}</div></div>
+    </div>
+    <div class="meta" style="margin-bottom:8px">Valor em estoque: <b>${moeda((it.saldo||0)*(it.custoMedio||0))}</b></div>
+    ${info.map(([k,v])=>`<div class="meta">${k}: <b>${esc(v)}</b></div>`).join("")}
+    <div class="est-acoes" style="margin-top:14px"><button class="btn btn-sec" onclick="formEntradaInsumo('${id}')">＋ Entrada</button><button class="btn btn-sec" onclick="formConsumoInsumo('${id}')">－ ${med?"Aplicar":"Saída"}</button></div>
+    <button class="btn btn-sec" style="margin-top:10px" onclick="formEditarInsumo('${id}')">✎ Editar dados</button>
+    <div class="h3" style="margin:14px 0 6px">Movimentos</div>${hist}
+    <div class="lado" style="margin-top:12px"><button class="btn btn-sec" onclick="fechar()">Fechar</button><button class="btn-fant" style="color:var(--perigo);flex:1" onclick="excluirInsumo('${id}')">Excluir item</button></div>`);
+}
+function fotoInsumo(input,id){const f=input.files&&input.files[0];if(!f)return;
+  lerFotoRedimensionada(f,async d=>{const it=await get("insumos",id);if(!it)return;it.foto=d;await put("insumos",it);fichaInsumo(id);telaEstoqueManter();});}
+async function removerFotoInsumo(id){const it=await get("insumos",id);if(!it)return;it.foto="";await put("insumos",it);fichaInsumo(id);telaEstoqueManter();}
+// Redesenha a lista do estoque por trás da ficha, mantendo as seções abertas
+async function telaEstoqueManter(){if(document.querySelector(".est113-sec"))await telaEstoque();}
 async function histEstoque(insumos,movs){
   const nomeIns=id=>(insumos.find(i=>i.id===id)||{}).nome||"item removido";
   const arr=movs.slice().sort((a,b)=>(b.data||"").localeCompare(a.data||"")||(b.criadoEm||0)-(a.criadoEm||0)).map(m=>{
@@ -3367,7 +3409,7 @@ async function excluirInsumo(id){
   const movs=(await getAll("insumo_mov")).filter(m=>m.insumoId===id);
   if(movs.length)return alert("Este item tem movimentos registrados. Exclua os movimentos antes (ou mantenha o item para o histórico).");
   if(!confirm("Excluir este item de estoque?"))return;
-  await del("insumos",id);telaEstoque();
+  await del("insumos",id);fechar();telaEstoque();
 }
 async function formEntradaInsumo(id){
   const it=await get("insumos",id); if(!it){telaEstoque();return;}
