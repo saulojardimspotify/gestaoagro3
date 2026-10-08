@@ -2196,10 +2196,11 @@ async function verAnimal(id){
     <div class="animal-actions">
       <button class="btn btn-sec" onclick="formEditarAnimal('${id}')">✎ Editar dados</button>
       <button class="btn btn-sec" onclick="gerenciarGruposAnimal('${id}')">👥 Grupos (${gruposAnimal.length})</button>
-      <div class="lado"><button class="btn" onclick="formMedicarAnimal('${id}')">💊 Medicar</button>
+      ${a.status==="Ativo"?`<div class="lado"><button class="btn" onclick="formMedicarAnimal('${id}')">💊 Medicar</button>
         <button class="btn btn-sec" onclick="formMover('${id}')">↷ Mover lote</button></div>
       <button class="btn btn-sec" onclick="formEvento('${id}')">+ Registrar evento de manejo</button>
-      ${a.sexo==="M"&&!a.castrado?`<button class="btn btn-sec" onclick="castrarAnimal('${id}')">✂️ Registrar castração</button>`:""}
+      ${a.sexo==="M"&&!a.castrado?`<button class="btn btn-sec" onclick="castrarAnimal('${id}')">✂️ Registrar castração</button>`:""}`
+      :`<div class="meta" style="margin:2px 4px 12px">Animal ${String(a.status||"baixado").toLowerCase()}: manejo, medicação e troca de lote não se aplicam mais.</div>`}
     </div>
     ${a.status==="Ativo"?`<button class="btn btn-perigo animal-saida" onclick="formSaida('${id}')">↩ Registrar saída (morte/venda)</button>`:""}
     <div class="h3">Histórico</div>${tl}
@@ -4070,7 +4071,7 @@ async function salvarEdicaoAnimal(id){
 }
 
 async function formMedicarLote(loteId){return formAplicacao({voltar:"lote",loteId});}
-async function formMover(id){
+async function formMover(id){const _ab=await get("animais",id);if(_ab&&_ab.status&&_ab.status!=="Ativo")return alert(`Este animal está baixado (${_ab.status}). Não é possível mover de lote.`);
   if(!(await podeUsarApp("Mover animal de lote")))return;const a=await get("animais",id);
   const {propriedades,lotes}=await tudo();const outros=lotes.filter(l=>l.id!==a.loteAtualId);
   if(!outros.length)return alert("Não há outro lote.");
@@ -4761,8 +4762,8 @@ async function excluirGrupoManejo(tipo,idsCsv){
 async function gerenciarMedicamentos(){fechar();aba="painel";marcarNav("painel");telaEstoque();}
 async function formEditarMedicamento(id){if(await get("insumos",id))return formNovoInsumo(null,id);gerenciarMedicamentos();}
 
-async function formMedicarAnimal(id){return formAplicacao({voltar:"animal",animalId:id});}
-async function castrarAnimal(id){
+async function formMedicarAnimal(id){const _ab=await get("animais",id);if(_ab&&_ab.status&&_ab.status!=="Ativo")return alert(`Este animal está baixado (${_ab.status}). Não é possível medicar.`);return formAplicacao({voltar:"animal",animalId:id});}
+async function castrarAnimal(id){const _ab=await get("animais",id);if(_ab&&_ab.status&&_ab.status!=="Ativo")return alert(`Este animal está baixado (${_ab.status}). Não é possível registrar castração.`);
   const a=await get("animais",id);if(!a)return;
   if(a.sexo!=="M")return alert("Só é possível registrar castração em machos.");
   abrir(`<h2>✂️ Registrar castração</h2>
@@ -4779,7 +4780,7 @@ async function salvarCastracao(id){
   await registrarEvento(id,"Castração",a.dataCastracao,val("ct_obs"),{});
   fechar();verAnimal(id);
 }
-async function formEvento(id,tipoFixo){
+async function formEvento(id,tipoFixo){const _ab=await get("animais",id);if(_ab&&_ab.status&&_ab.status!=="Ativo")return alert(`Este animal está baixado (${_ab.status}). Não é possível registrar evento de manejo.`);
   if(!(await podeUsarApp("Registrar manejo")))return;
   const opt=TIPOS.map(t=>`<option value="${t}" ${t===tipoFixo?"selected":""}>${t}</option>`).join("");
   abrir(`<h2>${tipoFixo||"Registrar evento"}</h2>
