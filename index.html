@@ -1326,7 +1326,23 @@ async function abrirLotesOperacional(){
   if(await exigirCadastroInicial())return;
   aba="painel";
   marcarNav("painel");
-  telaLotes();
+  telaLotesGrupos();
+}
+// V152: entrada única para Lotes e Grupos
+async function telaLotesGrupos(){
+  topoPagina();
+  const {lotes,animais,grupos,grupo_animais}=await tudo();
+  const ativos=animais.filter(a=>a.status==="Ativo");
+  const ativosIds=new Set(ativos.map(a=>a.id));
+  const emLote=ativos.filter(a=>lotes.some(l=>l.id===a.loteAtualId)).length;
+  const emGrupo=new Set(grupo_animais.filter(v=>ativosIds.has(v.animalId)&&grupos.some(g=>g.id===v.grupoId)).map(v=>v.animalId)).size;
+  $t.innerHTML=`<button class="voltar" onclick="irAba('painel')">‹ Gestão Operacional</button>
+    <div class="sechead"><span class="sic">${ico("cerca")}</span><h2>Lotes e Grupos</h2></div>
+    <div class="meta" style="margin:-4px 4px 14px">O <b>lote</b> é onde o animal está (cada animal fica em um só). O <b>grupo</b> é uma classificação extra — o mesmo animal pode estar em vários grupos sem mudar de lote.</div>
+    <div class="mod-list">
+      ${mod(ico("cerca"),"Lotes",`${lotes.length} lote(s) · ${emLote} animal(is) ativo(s)`,"telaLotes()")}
+      ${mod(ico("pessoas"),"Grupos",`${grupos.length} grupo(s) · ${emGrupo} animal(is) em algum grupo`,"telaGrupos()")}
+    </div>`;
 }
 async function abrirAnimaisOperacional(){
   if(await exigirCadastroInicial())return;
@@ -1409,19 +1425,16 @@ async function telaPainel(){
     ${props}
 
     <div class="sechead" style="margin-top:22px"><span class="sic">▦</span><h2>Módulos do sistema</h2></div>
-    <div class="submod">${ico("boi")}Rebanho</div>
+    <div class="submod">${ico("boi")}Rebanho e Manejo</div>
     <div class="grid">
       ${mod(ico("boi"),"Animais","Cadastro, nascimentos, desmama, consulta e histórico.","abrirAnimaisOperacional()")}
       ${mod(ico("etiqueta"),"Venda / Morte de Animal","Venda individual, múltipla, por lote ou grupo e registro de morte.","telaVendaMorteAnimal()")}
-    </div>
-    <div class="submod">${ico("pasto")}Manejo & Áreas</div>
-    <div class="grid">
       ${mod(ico("seringa"),"Eventos de Manejo","Marcar, medicar ou trocar de lote.","telaManejo()")}
-      ${mod(ico("cerca"),"Lotes","Organização dos animais por lote.","abrirLotesOperacional()")}
-      ${mod(ico("pasto"),"Gestão de Pastos","Pastos, capim, área e situação.","telaGestaoPasto()")}
+      ${mod(ico("cerca"),"Lotes e Grupos","Lotes por propriedade e grupos de animais.","abrirLotesOperacional()")}
     </div>
-    <div class="submod">${ico("caixa")}Recursos & Alertas</div>
+    <div class="submod">${ico("caixa")}Recursos e Alertas</div>
     <div class="grid">
+      ${mod(ico("pasto"),"Gestão de Pastos","Pastos, capim, área e situação.","telaGestaoPasto()")}
       ${mod(ico("caixa"),"Estoque de Insumos","Medicamentos, sal, e itens de manutenção.","telaEstoque()")}
       ${mod(ico("sino"),"Avisos","Eventos, manejos e alertas que exigem atenção.","telaAvisos()")}
       ${mod(ico("calc"),"Calculadora da Pecuária","Ferramentas para cálculos de negociações e indicadores.","telaCalculadoraPecuaria()")}
@@ -1939,9 +1952,9 @@ async function telaLotes(){
   const repetido=l=>qtdNome[chaveNomeLote(l.nome)]>1;
   const chipRep=l=>repetido(l)?` <span class="chip chip-off" style="color:var(--perigo)">nome repetido</span>`:"";
   const nRep=lotes.filter(repetido).length;
-  let html=`<button class="voltar" onclick="irAba('painel')">‹ Gestão Operacional</button>
-    <button class="btn" onclick="formNovoLote()">+ Novo lote</button>
-    <button class="btn btn-sec" onclick="telaGrupos()">👥 Grupos de animais</button>`;
+  let html=`<button class="voltar" onclick="telaLotesGrupos()">‹ Lotes e Grupos</button>
+    <div class="sechead"><span class="sic">${ico("cerca")}</span><h2>Lotes</h2></div>
+    <button class="btn" onclick="formNovoLote()">+ Novo lote</button>`;
   if(nRep)html+=`<div class="card" style="border-left:4px solid var(--perigo);cursor:default"><b>${nRep} lotes com nome repetido</b><div class="meta" style="margin-top:4px">Foram criados antes desta versão. Abra um deles e toque em ✎ Editar para renomear, ou apague o que estiver vazio.</div></div>`;
   if(lotes.length===0){html+=`<div class="vazio"><div class="big">▤</div><b>Nenhum lote</b><div class="meta">Crie um lote para organizar o rebanho.</div></div>`;}
   else{
@@ -1967,7 +1980,7 @@ async function verLote(id){
   const nomeLote=l.nome;
   let lst=animais.length?"":`<div class="meta" style="padding:8px 4px">Nenhum animal ativo neste lote.</div>`;
   for(const a of animais.sort((x,y)=>(x.codigo||0)-(y.codigo||0)||String(x.brinco||"").localeCompare(String(y.brinco||""))))lst+=linhaAnimal(a,nomeLote,false); // V144: animal sem brinco não trava a tela
-  $t.innerHTML=`<button class="voltar" data-lista="lote:${l.id}" onclick="voltar()">‹ Voltar</button>
+  $t.innerHTML=`<button class="voltar" data-lista="lote:${l.id}" onclick="telaLotes()">‹ Lotes</button>
     <div class="card"><div class="row"><div class="ti" style="font-size:19px">${esc(l.nome)}</div>
       <button class="btn-fant" style="padding:4px 8px;color:var(--verde);font-weight:700" onclick="formEditarLote('${id}')">✎ Editar</button></div>
       ${p?`<div class="meta">${esc(p.nome)}</div>`:""}
@@ -3662,8 +3675,8 @@ async function telaGrupos(){
   let itens=grupos.map(g=>`<div class="card row rt" onclick="verGrupo('${g.id}')">
     <div><div class="ti">👥 ${esc(g.nome)}</div>${g.descricao?`<div class="meta">${esc(g.descricao)}</div>`:""}</div>
     <span class="badge">${conta(g.id)} 🐄</span></div>`).join("");
-  $t.innerHTML=`<button class="voltar" onclick="telaLotes()">‹ Lotes</button>
-    <div class="sechead"><span class="sic">👥</span><h2>Grupos de animais</h2></div>
+  $t.innerHTML=`<button class="voltar" onclick="telaLotesGrupos()">‹ Lotes e Grupos</button>
+    <div class="sechead"><span class="sic">👥</span><h2>Grupos</h2></div>
     <div class="meta" style="margin:-8px 4px 14px">O lote indica onde o animal está. Grupos são classificações simultâneas e não alteram o lote atual.</div>
     <button class="btn" onclick="formNovoGrupo()">+ Novo grupo</button>
     ${itens||`<div class="vazio"><div class="big">👥</div><b>Nenhum grupo</b><div class="meta">Crie grupos para reunir animais por finalidade, protocolo ou categoria.</div></div>`}`;
@@ -4801,7 +4814,7 @@ async function apagarLote(id){
   const ativos=as.filter(a=>a.status==="Ativo").length, baixados=as.length-ativos;
   if(ativos)return alert(`Este lote tem ${ativos} animal(is) ativo(s). Mova-os para outro lote antes de apagar.`);
   if(!confirm(baixados?`Apagar este lote? Os ${baixados} animal(is) vendido(s)/morto(s) que passaram por ele continuam no histórico.`:"Apagar este lote?"))return;
-  await del("lotes",id);irAba("painel");abrirLotesOperacional();}
+  await del("lotes",id);aba="painel";marcarNav("painel");telaLotes();}
 async function apagarAnimal(id){if(!confirm("Apagar este animal e seu histórico?"))return;
   const evs=(await getAll("eventos")).filter(e=>e.animalId===id);for(const e of evs)await del("eventos",e.id);
   await del("animais",id);voltar();}
