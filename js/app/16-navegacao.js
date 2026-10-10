@@ -20,7 +20,7 @@ const TELAS_NAVEGACAO=[
   "telaInicio","telaPainel","telaAvisos","telaGestaoPasto","verPasto","verPropriedade","telaNascimentosAntiga",
   "telaLotesGrupos","telaLotes","verLote","telaGrupos","verGrupo","telaAnimais","telaAnimaisBaixados","verAnimal",
   "telaManejo","telaMedicamentosManejo","telaTrocaLote","escolherModoTrocaV81","telaDestinoTrocaV81",
-  "telaEstoque","telaCalculadoraPecuaria","telaCalculadoraNegociacao","telaVendaMorteAnimal",
+  "telaEstoque","telaCalculadoraPecuaria","telaCalculadoraNegociacao","telaCalculadoraEquilibrio","telaVendaMorteAnimal",
   "menuFinanceiro","finResumo","finLancamentos","finRelatorios","finConfig","finHistoricoContabil",
   "telaPerfil","telaInstalar","telaBloqueada","telaPrimeirosPassos"
 ];
@@ -36,7 +36,7 @@ const TITULOS_NAVEGACAO={
   telaAnimais:"Animais",telaAnimaisBaixados:"Vendidos e mortos",verAnimal:"Animal",
   telaManejo:"Manejo",telaMedicamentosManejo:"Medicamentos",telaTrocaLote:"Trocar de lote",
   escolherModoTrocaV81:"Seleção",telaDestinoTrocaV81:"Destino",telaEstoque:"Estoque",
-  telaCalculadoraPecuaria:"Calculadora da Pecuária",telaCalculadoraNegociacao:"Negociação",
+  telaCalculadoraPecuaria:"Calculadora da Pecuária",telaCalculadoraNegociacao:"Negociação",telaCalculadoraEquilibrio:"Ponto de equilíbrio",
   telaVendaMorteAnimal:"Venda / Morte",menuFinanceiro:"Financeiro",finResumo:"Financeiro",
   finLancamentos:"Lançamentos",finRelatorios:"Relatórios",finConfig:"Configurações",
   finHistoricoContabil:"Livro Diário",telaPerfil:"Perfil",telaInstalar:"Voltar"

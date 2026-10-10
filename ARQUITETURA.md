@@ -67,7 +67,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 04-perfil-limpeza.js | Remove a seção Cadastros do Perfil | (DOM) |
 | 05-inicio-menu-limpeza.js | Simplifica o menu + | `menuAdicionar` |
 | 06-saida-animais.js | Venda/morte individual, múltipla, por lote ou grupo | `formSaida`, `blocoSaida` |
-| 07-calculadora-pecuaria.js | Calculadora da Pecuária | `telaPainel`, `telaCalculadora*` |
+| 07-calculadora-pecuaria.js | Calculadora da Pecuária: valor da negociação e ponto de equilíbrio da recria/engorda | `telaPainel`, `telaCalculadora*`, `ptEquilibrio` |
 | 08-saida-menu.js | Página Venda / Morte de Animal | `telaVendaMorteAnimal` |
 | 09-venda-financeiro.js | Cálculo único da venda e integração com o Financeiro | `formLancamento`, `salvarVendaV92` |
 | 10-financeiro-classificacao.js | Natureza (receita/custo/despesa/investimento) e apropriação | `formLancamento`, `finResumo`, `finLancamentos` |
