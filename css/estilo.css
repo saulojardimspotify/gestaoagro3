@@ -47,11 +47,14 @@
   .topo .tit{text-align:center;}
   .topo .tit h1{margin:0;font-size:19px;font-weight:800;color:var(--verde-esc);}
   .topo .tit .sub{font-size:12px;color:var(--muted);margin-top:1px;}
+  /* Botão + no mesmo padrão dos atalhos: círculo verde-claro com ícone de traço (centralizado pelo SVG). */
   .topo .mais{
-    width:44px;height:44px;border-radius:50%;background:var(--verde);color:#fff;font-size:26px;
-    box-shadow:var(--sombra);display:flex;align-items:center;justify-content:center;padding:0;line-height:1;
+    width:42px;height:42px;border-radius:50%;background:var(--verde-lite);color:var(--verde);
+    display:flex;align-items:center;justify-content:center;padding:0;
   }
-  .topo .mais:active{background:var(--verde-med);}
+  .topo .mais:active{background:var(--verde);color:#fff;}
+  .topo .icobtn svg.ico{width:24px;height:24px;}
+  .topo .mais svg.ico{width:22px;height:22px;stroke-width:2.2;}
 
   main{max-width:660px;margin:0 auto;padding:16px 14px 8px;overflow-x:hidden;}
   #tela > *{animation:telaIn .17s ease-out both;}
