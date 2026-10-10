@@ -139,8 +139,8 @@ async function telaBloqueada(){
   topoPagina();
   document.body.classList.add("deslogado");
   $t.innerHTML=`<div style="min-height:calc(100vh - 40px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px 18px">
-    <div style="width:96px;height:96px;border-radius:26px;background:var(--verde-lite);display:flex;align-items:center;justify-content:center;margin-bottom:18px;overflow:hidden">
-      <img src="img/boi.png" alt="" style="width:78px;height:78px;object-fit:contain">
+    <div style="width:112px;height:112px;border-radius:28px;background:#fff;border:1px solid var(--linha);box-shadow:0 2px 10px rgba(0,0,0,.06);margin-bottom:18px;overflow:hidden">
+      <img src="img/icon.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block">
     </div>
     <div style="font-size:26px;font-weight:800;color:var(--verde-esc)">Gestão do Rebanho</div>
     <div class="meta" style="margin:10px auto 26px;max-width:360px;line-height:1.5">
