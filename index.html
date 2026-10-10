@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rebanho">
+<meta name="theme-color" content="#1F5130">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="img/icon.png">
+<link rel="icon" type="image/png" href="img/icon.png">
+<title>Gestão do Rebanho</title>
+<link rel="stylesheet" href="css/estilo.css">
+</head>
+<body class="deslogado">
+
+<div class="topo">
+  <button class="icobtn" onclick="menuConfig()">☰</button>
+  <div class="tit"><h1>Gestão do Rebanho</h1></div>
+  <button class="mais" onclick="menuAdicionar()">+</button>
+</div>
+
+<main id="tela"></main>
+
+<nav>
+  <button data-aba="inicio" class="ativo"><span class="ic" data-ico="casa"></span><span>Início</span></button>
+  <button data-aba="painel"><span class="ic" data-ico="boi"></span><span>Operacional</span></button>
+  <button data-aba="financeiro"><span class="ic" data-ico="carteira"></span><span>Financeiro</span></button>
+  <button data-aba="perfil"><span class="ic" data-ico="pessoa"></span><span>Perfil</span></button>
+</nav>
+
+<div class="ov" id="ov"><div class="modal" id="md"></div></div>
+
+<!-- Ordem importa: núcleo do app (js/app) → módulos que ajustam o núcleo (js/modulos) → inicialização.
+     O service worker acrescenta ?v=VERSÃO a cada arquivo para forçar a atualização. -->
+<script src="js/app/01-config-conta.js"></script>
+<script src="js/app/02-banco-local.js"></script>
+<script src="js/app/03-utilidades-constantes.js"></script>
+<script src="js/app/04-interface-base.js"></script>
+<script src="js/app/05-instalar-primeiros-passos.js"></script>
+<script src="js/app/06-inicio.js"></script>
+<script src="js/app/07-painel-pastos-avisos.js"></script>
+<script src="js/app/08-lotes-animais.js"></script>
+<script src="js/app/09-perfil-nuvem-sincronizacao.js"></script>
+<script src="js/app/10-formularios.js"></script>
+<script src="js/app/11-financeiro.js"></script>
+<script src="js/app/12-estoque.js"></script>
+<script src="js/app/13-grupos-pastos-cadastros.js"></script>
+<script src="js/app/14-manejo-medicamentos.js"></script>
+<script src="js/app/15-backup.js"></script>
+<script src="js/modulos/01-troca-lote-ajustes.js"></script>
+<script src="js/modulos/02-troca-lote.js"></script>
+<script src="js/modulos/03-perfil-backup.js"></script>
+<script src="js/modulos/04-perfil-limpeza.js"></script>
+<script src="js/modulos/05-inicio-menu-limpeza.js"></script>
+<script src="js/modulos/06-saida-animais.js"></script>
+<script src="js/modulos/07-calculadora-pecuaria.js"></script>
+<script src="js/modulos/08-saida-menu.js"></script>
+<script src="js/modulos/09-venda-financeiro.js"></script>
+<script src="js/modulos/10-financeiro-classificacao.js"></script>
+<script src="js/modulos/11-animais-baixados.js"></script>
+<script src="js/modulos/12-lancamentos-estoque-ui.js"></script>
+<script src="js/modulos/13-compra-animal.js"></script>
+<script src="js/modulos/14-contabilidade.js"></script>
+<script src="js/modulos/15-busca-versao.js"></script>
+<script src="js/modulos/16-gestao-dados.js"></script>
+<script src="js/modulos/17-perfil-gestao.js"></script>
+<script src="js/app/99-iniciar.js"></script>
+</body>
+</html>
