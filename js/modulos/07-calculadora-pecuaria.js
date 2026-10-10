@@ -255,6 +255,7 @@
     const out=document.getElementById('mf_resultado');if(!out)return;
     const pct=id=>{const v=numeroCalc(id);return v===null?null:v/100;};
     const c={PF:numeroCalc('mf_pf'),Pboi:numeroCalc('mf_pboi'),custo:numeroCalc('mf_custo')??0};
+    const txtM=document.getElementById('mf_m_pvenda_txt');if(txtM)txtM.textContent=c.Pboi?dinheiro(c.Pboi):'';
     const lado=(k,pvenda)=>({PBC:numeroCalc('mf_'+k+'_pbc'),A:pct('mf_'+k+'_agio'),GMD:numeroCalc('mf_'+k+'_gmd'),
       RC:pct('mf_'+k+'_rc'),DC:numeroCalc('mf_'+k+'_dc')??0,RV:pct('mf_'+k+'_rv'),DV:numeroCalc('mf_'+k+'_dv')??0,Pvenda:pvenda});
     const m=lado('m',c.Pboi),f=lado('f',numeroCalc('mf_f_pvenda'));
@@ -322,8 +323,8 @@
           ${par('Rendimento na venda (%)','rv','52','50')}
           ${par('Desconto por @ na venda (kg)','dv','0','0')}
           <div class="mf-rot">Preço da @ na venda (R$)</div>
-          <div class="mf-fixo">@ do boi gordo</div>
-          <input id="mf_f_pvenda" inputmode="decimal" placeholder="300" oninput="calcularMachoFemea()">
+          <div class="mf-fixo">Macho: usa a @ do boi gordo<br><b id="mf_m_pvenda_txt"></b></div>
+          <div><input id="mf_f_pvenda" inputmode="decimal" placeholder="300" oninput="calcularMachoFemea()"><div class="mf-fixo" style="margin-top:4px">@ da fêmea</div></div>
         </div>
         <div id="mf_resultado" style="margin-top:16px"><div class="meta">Preencha os campos de macho e fêmea para comparar.</div></div>
         <div class="calc-formula"><b>Cálculo, para cada um:</b> dias = (peso de venda − peso de compra) / GMD · compra = @ do boi × (1 + ágio) × peso × RC × (15 − DC)/225 ·
