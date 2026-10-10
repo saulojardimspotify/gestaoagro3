@@ -9,8 +9,12 @@ Preparação (uma vez): `npm i -g playwright` (o Chromium já precisa estar inst
 python3 -m http.server 8765 &                 # serve o app
 python3 testes/conferir_arquivos.py           # index.html × sw.js × disco
 NODE_PATH=$(npm root -g) node testes/sincronizacao_dois_aparelhos.js
+NODE_PATH=$(npm root -g) node testes/navegacao_voltar.js
 ```
 
 `sincronizacao_dois_aparelhos.js` abre dois "aparelhos" com o mesmo usuário e um Supabase simulado em
 memória e confere 7 situações: criação, edição offline mais antiga (não pode sobrescrever a mais nova),
 edição offline mais nova (vale), criação offline, exclusão, exclusão antiga × edição nova e pendências.
+
+`navegacao_voltar.js` confere o "‹ Voltar": grupo → animal → volta ao grupo; lista de animais com filtro,
+busca e rolagem preservados; lote → animal; Início → Estoque → Início; e sem ciclo quando não há histórico.

@@ -79,34 +79,8 @@ function topoPagina(){/* a rolagem pro topo agora acontece quando a nova tela ap
 document.getElementById("tela").addEventListener("animationstart",e=>{
   if(e.animationName==="telaIn")window.scrollTo({top:_rolarPara||0,left:0,behavior:"auto"});
 });
-/* V140: o "Voltar" da ficha do animal retorna à tela de onde ela foi aberta
-   (lista de Animais com o mesmo filtro/busca e posição, lote ou vendidos/baixados). */
-let _rolarPara=0,_origemFicha=null;
-function registrarOrigemFicha(){
-  if(document.querySelector("#tela [data-ficha-animal]"))return; // já está numa ficha: mantém a origem
-  const y=window.scrollY||document.documentElement.scrollTop||0;
-  const v=id=>(document.getElementById(id)||{}).value||"";
-  if(document.getElementById("f_tipo")&&document.getElementById("lista")){
-    _origemFicha={tipo:"animais",y,busca:v("busca"),ftipo:v("f_tipo"),fcrit:v("f_criterio")};return;
-  }
-  const m=document.querySelector("#tela [data-lista]");
-  if(m){const [tipo,id]=m.dataset.lista.split(":");_origemFicha={tipo,id,y};return;}
-  _origemFicha={tipo:"animais",y:0};
-}
-async function voltarDaFicha(){
-  const o=_origemFicha||{tipo:"animais",y:0};_origemFicha=null;
-  _rolarPara=o.y||0;setTimeout(()=>{_rolarPara=0;},600);
-  if(o.tipo==="lote"&&o.id&&await get("lotes",o.id))return verLote(o.id);
-  if(o.tipo==="baixados"&&typeof telaAnimaisBaixados==="function")return telaAnimaisBaixados();
-  if(await exigirCadastroInicial())return;
-  aba="painel";marcarNav("painel");
-  await telaAnimais();
-  if(o.ftipo){const t=document.getElementById("f_tipo");if(t){t.value=o.ftipo;atualizarCriterioFiltroAnimais();
-    const c=document.getElementById("f_criterio");if(c&&o.fcrit)c.value=o.fcrit;}}
-  if(o.busca){const b=document.getElementById("busca");if(b)b.value=o.busca;}
-  if(o.ftipo||o.busca)filtrarAnimais();
-  if(_rolarPara)requestAnimationFrame(()=>window.scrollTo(0,_rolarPara));
-}
+// Posição de rolagem a aplicar quando a próxima tela aparecer (usado pelo "Voltar" — ver 16-navegacao.js).
+let _rolarPara=0;
 function irAba(a){aba=a;document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("ativo",x.dataset.aba===a));renderSeguro();}
 async function render(){
   topoPagina();

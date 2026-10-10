@@ -24,12 +24,12 @@ CLAUDE.md               Regras de trabalho (versão, publicação, cuidados)
 Todos os arquivos são **scripts clássicos**: funções e variáveis de nível superior são globais e
 compartilhadas entre arquivos. Por isso a ordem do `index.html` é a ordem de execução:
 
-1. `js/app/01…15` — núcleo (dados, utilidades, telas).
+1. `js/app/01…16` — núcleo (dados, utilidades, telas, histórico de navegação).
 2. `js/modulos/01…17` — módulos. Muitos **substituem** uma função do núcleo guardando a original
    (ex.: `const base=window.telaEstoque; window.telaEstoque=async function(){…}`). Um módulo só pode
    ajustar o que já foi carregado antes dele.
-3. `js/app/99-iniciar.js` — abre o banco, desenha a primeira tela e registra o service worker.
-   Fica por último para que a primeira tela já use todos os módulos.
+3. `js/app/99-iniciar.js` — liga o histórico de navegação, abre o banco, desenha a primeira tela e
+   registra o service worker. Fica por último para que a primeira tela já use todos os módulos.
 
 O `sw.js` acrescenta `?v=VERSÃO` a cada `<script src="js/…">` e ao css. Isso força o download da
 versão nova e é de onde vem o "Versão N" da tela inicial. Sem service worker (primeira abertura),
@@ -54,6 +54,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 13-grupos-pastos-cadastros.js | Grupos, cadastro de pastos, saída e edição do animal |
 | 14-manejo-medicamentos.js | Manejo, aplicação de medicamento integrada ao estoque, troca de lote |
 | 15-backup.js | Backup manual em arquivo |
+| 16-navegacao.js | Histórico de telas: o "‹ Voltar" volta à tela anterior com filtros, busca e rolagem |
 | 99-iniciar.js | Inicialização e registro do service worker |
 
 ## Módulos — `js/modulos/`
@@ -77,6 +78,15 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 15-busca-versao.js | Busca no Livro Diário e "Versão N" na tela inicial | `telaInicio`, `finHistoricoContabil` |
 | 16-gestao-dados.js | Edição de operações e reinício dos dados | `editarOperacaoV116`, `resetTotalV116` |
 | 17-perfil-gestao.js | Botão "Gerenciar dados" no Perfil | `gerenciarDadosV116` |
+
+## Navegação e botão "‹ Voltar" (V157)
+
+- Toda função que desenha uma tela inteira está em `TELAS_NAVEGACAO` (`16-navegacao.js`). Ao abrir uma
+  tela, a anterior vai para uma pilha com o valor dos campos (filtros, busca, marcações) e a rolagem.
+- Qualquer botão `class="voltar"` da tela usa essa pilha. O `onclick` escrito no botão só vale quando não há
+  histórico (ex.: entrou pelo menu de baixo) e indica a tela "mãe".
+- Menu de baixo e tela Início começam pilha nova; as abas do Financeiro contam como uma tela só.
+- Tela nova: incluir o nome em `TELAS_NAVEGACAO` e o título em `TITULOS_NAVEGACAO`.
 
 ## Dados e sincronização
 

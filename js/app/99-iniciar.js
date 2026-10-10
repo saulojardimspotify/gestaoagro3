@@ -4,6 +4,9 @@
    com os demais arquivos. A ordem de carregamento está no index.html. */
 
 /* ======================= INICIAR ======================= */
+// V157: o "Voltar" passa a usar o histórico de telas (precisa vir depois de todos os módulos).
+instalarHistoricoNavegacao();
+
 abrirDB().then(async()=>{
   // V60: primeiro abre a interface usando o IndexedDB local.
   // Supabase/sincronização rodam depois e nunca podem deixar a tela em branco.

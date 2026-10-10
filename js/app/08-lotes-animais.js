@@ -40,7 +40,7 @@ async function verLote(id){
   const nomeLote=l.nome;
   let lst=animais.length?"":`<div class="meta" style="padding:8px 4px">Nenhum animal ativo neste lote.</div>`;
   for(const a of animais.sort((x,y)=>(x.codigo||0)-(y.codigo||0)||String(x.brinco||"").localeCompare(String(y.brinco||""))))lst+=linhaAnimal(a,nomeLote,false); // V144: animal sem brinco não trava a tela
-  $t.innerHTML=`<button class="voltar" data-lista="lote:${l.id}" onclick="telaLotes()">‹ Lotes</button>
+  $t.innerHTML=`<button class="voltar" onclick="telaLotes()">‹ Lotes</button>
     <div class="card"><div class="row"><div class="ti" style="font-size:19px">${esc(l.nome)}</div>
       <button class="btn-fant" style="padding:4px 8px;color:var(--verde);font-weight:700" onclick="formEditarLote('${id}')">✎ Editar</button></div>
       ${p?`<div class="meta">${esc(p.nome)}</div>`:""}
@@ -219,7 +219,6 @@ function linhaAnimal(a,nomeLote,mostraLote){
     </div></div>`;
 }
 async function verAnimal(id){
-  registrarOrigemFicha();
   topoPagina();
   const a=await get("animais",id),{lotes,marcas}=await tudo();
   const nomeLote=(lotes.find(l=>l.id===a.loteAtualId)||{}).nome||"—";
@@ -242,7 +241,7 @@ async function verAnimal(id){
       <div class="dt">${quando}</div>${med?`<div class="de">${med}</div>`:""}${e.detalhes?`<div class="de">${esc(e.detalhes)}</div>`:""}</div>`;
   });
   let tl=eventos.length?verMais(evItens,"evento(s)"):`<div class="meta">Sem eventos ainda.</div>`;
-  $t.innerHTML=`<button class="voltar" data-ficha-animal="1" onclick="voltarDaFicha()">‹ Voltar</button>
+  $t.innerHTML=`<button class="voltar" onclick="telaAnimais()">‹ Animais</button>
     <div class="card">
       <div style="display:flex;gap:14px;align-items:flex-start">
         <div class="an-thumb" style="width:84px;height:84px;font-size:34px${a.foto?';cursor:zoom-in':''}" ${a.foto?`onclick="ampliarFotoAnimal('${id}')"`:""}>${a.foto?`<img src="${esc(a.foto)}" alt="">`:"🐄"}</div>

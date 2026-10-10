@@ -5,8 +5,8 @@
      navegador a baixar a versão nova e é de onde vem o "Versão N" da tela inicial.
    Regras de versão e de arquivos novos: ver CLAUDE.md e ARQUITETURA.md. */
 
-const CACHE = "rebanho-v156-botoes-topo";
-const APP_VERSION = "156";
+const CACHE = "rebanho-v157-voltar-historico";
+const APP_VERSION = "157";
 
 // Todos os arquivos do app (mesma ordem do index.html). Arquivo .js novo: incluir aqui E no index.html.
 const ARQUIVOS = [
@@ -16,7 +16,7 @@ const ARQUIVOS = [
   "./js/app/04-interface-base.js", "./js/app/05-instalar-primeiros-passos.js", "./js/app/06-inicio.js",
   "./js/app/07-painel-pastos-avisos.js", "./js/app/08-lotes-animais.js", "./js/app/09-perfil-nuvem-sincronizacao.js",
   "./js/app/10-formularios.js", "./js/app/11-financeiro.js", "./js/app/12-estoque.js",
-  "./js/app/13-grupos-pastos-cadastros.js", "./js/app/14-manejo-medicamentos.js", "./js/app/15-backup.js",
+  "./js/app/13-grupos-pastos-cadastros.js", "./js/app/14-manejo-medicamentos.js", "./js/app/15-backup.js", "./js/app/16-navegacao.js",
   "./js/modulos/01-troca-lote-ajustes.js", "./js/modulos/02-troca-lote.js", "./js/modulos/03-perfil-backup.js",
   "./js/modulos/04-perfil-limpeza.js", "./js/modulos/05-inicio-menu-limpeza.js", "./js/modulos/06-saida-animais.js",
   "./js/modulos/07-calculadora-pecuaria.js", "./js/modulos/08-saida-menu.js", "./js/modulos/09-venda-financeiro.js",
