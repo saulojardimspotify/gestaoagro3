@@ -46,7 +46,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 05-instalar-primeiros-passos.js | Tela "Instalar o app" e cadastro inicial obrigatório |
 | 06-inicio.js | Página inicial: pendências, atalhos, Rebanho hoje, Financeiro, nascidos |
 | 07-painel-pastos-avisos.js | Gestão Operacional (módulos), pastos, avisos e próximas doses |
-| 08-lotes-animais.js | Lotes e Grupos, lote, lista e ficha do animal |
+| 08-lotes-animais.js | Lotes e Grupos, lote (com "Selecionar vários" para mover animais de lote), lista e ficha do animal |
 | 09-perfil-nuvem-sincronizacao.js | Perfil, conta, sincronização (envio/recebimento) e backup na nuvem |
 | 10-formularios.js | Cadastros de propriedade, marca e lote |
 | 11-financeiro.js | Resumo, lançamentos, relatórios e custos de produção por lote |

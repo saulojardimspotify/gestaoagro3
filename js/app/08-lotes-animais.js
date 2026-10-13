@@ -49,7 +49,56 @@ async function verLote(id){
     <button class="btn" onclick="formMedicarLote('${id}')">💊 Medicamento aplicado no lote inteiro</button>
     <div class="lado"><button class="btn btn-sec" onclick="formNovoAnimal('${id}')">+ Animal</button>
       <button class="btn btn-perigo" onclick="apagarLote('${id}')">Apagar</button></div>
-    <div class="h3">Animais</div>${lst}`;
+    <div class="sel-cab"><div class="h3">Animais</div>${animais.length>1?`<button class="btn-fant sel-liga" onclick="loteSelecaoLigar(true)">☑ Selecionar vários</button>`:""}</div>
+    <div id="lote_lista" data-lote="${id}">${lst}</div>
+    <div class="sel-barra" id="sel_barra">
+      <div class="sel-info"><b id="sel_qtd">0</b> selecionado(s) · <button class="btn-fant" onclick="loteSelecionarTodos()">Todos</button></div>
+      <div class="lado"><button class="btn btn-sec" onclick="loteSelecaoLigar(false)">Cancelar</button>
+        <button class="btn" onclick="formMoverSelecionados()">Mover de lote</button></div>
+    </div>`;
+  // V161: no modo "Selecionar vários", tocar no animal marca/desmarca em vez de abrir a ficha.
+  document.getElementById("lote_lista").addEventListener("click",e=>{
+    const lista=e.currentTarget;if(!lista.classList.contains("selecionando"))return;
+    const card=e.target.closest("[data-id]");if(!card)return;
+    e.stopPropagation();e.preventDefault();card.classList.toggle("sel");loteSelecaoContar();
+  },true);
+}
+
+/* ---- V161: selecionar vários animais do lote e mover para outro lote ---- */
+function loteSelecaoLigar(on){
+  const lista=document.getElementById("lote_lista");if(!lista)return;
+  lista.classList.toggle("selecionando",on);
+  if(!on)lista.querySelectorAll(".sel").forEach(c=>c.classList.remove("sel"));
+  loteSelecaoContar();
+}
+function loteSelecionados(){return [...document.querySelectorAll("#lote_lista .sel[data-id]")].map(c=>c.dataset.id);}
+function loteSelecaoContar(){const q=document.getElementById("sel_qtd");if(q)q.textContent=loteSelecionados().length;}
+function loteSelecionarTodos(){
+  const cards=[...document.querySelectorAll("#lote_lista [data-id]")],todos=cards.every(c=>c.classList.contains("sel"));
+  cards.forEach(c=>c.classList.toggle("sel",!todos));loteSelecaoContar();
+}
+async function formMoverSelecionados(){
+  const ids=loteSelecionados();if(!ids.length)return alert("Toque nos animais que deseja mover.");
+  if(!(await podeUsarApp("Mover animal de lote")))return;
+  const origem=document.getElementById("lote_lista").dataset.lote;
+  const {propriedades,lotes}=await tudo();const outros=lotes.filter(l=>l.id!==origem);
+  if(!outros.length)return alert("Não há outro lote. Cadastre o lote de destino primeiro.");
+  const opt=`<option value="">— selecione —</option>`+outros.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);
+    return`<option value="${l.id}">${esc(l.nome)}${p?` — ${esc(p.nome)}`:""}</option>`;}).join("");
+  abrir(`<h2>Mover ${ids.length} animal(is)</h2><div class="meta">Cada animal ganha um registro de movimentação no histórico.</div>
+    <label>Lote de destino</label><select id="mv_lote_varios">${opt}</select>
+    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
+      <button class="btn" onclick="confMoverSelecionados()">Mover</button></div>`);
+}
+async function confMoverSelecionados(){
+  const destino=val("mv_lote_varios");if(!destino)return alert("Selecione o lote de destino.");
+  const ids=loteSelecionados(),origem=document.getElementById("lote_lista").dataset.lote;
+  for(const id of ids)await moverAnimal(id,destino);
+  fechar();
+  const l=await get("lotes",destino);
+  await verLote(origem);
+  const cab=document.querySelector("#tela .card");
+  if(cab)cab.insertAdjacentHTML("afterend",`<div class="sel-ok">✓ ${ids.length} animal(is) movido(s) para <b>${esc(l?l.nome:"outro lote")}</b>.</div>`);
 }
 
 /* ======================= ANIMAIS ======================= */
@@ -206,7 +255,7 @@ function linhaAnimal(a,nomeLote,mostraLote){
   const sx=sexoChip(a.sexo);
   const st=a.status!=="Ativo"?`<span class="chip chip-off">${a.status}</span>`:"";
   const idchip=(a.brinco||a.nome)?`${(a.brinco||a.nome)?`<span class="chip chip-id">${codAnimal(a)}</span>`:""}`:"";
-  return `<div class="card rt" data-b="${esc(((a.brinco||"")+" "+(a.nome||"")+" "+codAnimal(a)).toLowerCase())}" onclick="verAnimal('${a.id}')">
+  return `<div class="card rt" data-id="${a.id}" data-b="${esc(((a.brinco||"")+" "+(a.nome||"")+" "+codAnimal(a)).toLowerCase())}" onclick="verAnimal('${a.id}')">
     <div style="display:flex;gap:12px;align-items:center">
       ${animalThumb(a,46)}
       <div style="flex:1;min-width:0">

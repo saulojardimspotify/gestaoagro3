@@ -5,8 +5,8 @@
      navegador a baixar a versão nova e é de onde vem o "Versão N" da tela inicial.
    Regras de versão e de arquivos novos: ver CLAUDE.md e ARQUITETURA.md. */
 
-const CACHE = "rebanho-v160-preco-femea";
-const APP_VERSION = "160";
+const CACHE = "rebanho-v161-mover-varios";
+const APP_VERSION = "161";
 
 // Todos os arquivos do app (mesma ordem do index.html). Arquivo .js novo: incluir aqui E no index.html.
 const ARQUIVOS = [
