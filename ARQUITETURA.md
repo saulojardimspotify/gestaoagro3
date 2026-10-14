@@ -24,7 +24,7 @@ CLAUDE.md               Regras de trabalho (versão, publicação, cuidados)
 Todos os arquivos são **scripts clássicos**: funções e variáveis de nível superior são globais e
 compartilhadas entre arquivos. Por isso a ordem do `index.html` é a ordem de execução:
 
-1. `js/app/01…16` — núcleo (dados, utilidades, telas, histórico de navegação).
+1. `js/app/01…17` — núcleo (dados, utilidades, telas, histórico de navegação, análise).
 2. `js/modulos/01…13` — módulos. Muitos **substituem** uma função do núcleo guardando a original
    (ex.: `const base=window.telaEstoque; window.telaEstoque=async function(){…}`). Um módulo só pode
    ajustar o que já foi carregado antes dele.
@@ -42,7 +42,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 01-config-conta.js | Endereço e chave do Supabase, sessão (login), `sbFetch`, permissões de uso |
 | 02-banco-local.js | IndexedDB: `abrirDB`, `get`, `getAll`, `put`, `del` (com metadados de sincronização) |
 | 03-utilidades-constantes.js | Datas, moeda, rótulos de animal, raças, categorias, estoque/medicamentos, migração de medicamentos |
-| 04-interface-base.js | Ícones SVG (`ico`), menu inferior e `render()` das abas, tela de login, aba Análise (em construção) |
+| 04-interface-base.js | Ícones SVG (`ico`), menu inferior e `render()` das abas, tela de login |
 | 05-instalar-primeiros-passos.js | Tela "Instalar o app" e cadastro inicial obrigatório |
 | 06-inicio.js | Página inicial: pendências, atalhos, Rebanho hoje, Financeiro, nascidos |
 | 07-painel-pastos-avisos.js | Gestão Operacional (módulos), pastos (inclui "Trocar lote de pasto", usado também no atalho do Início), avisos e próximas doses |
@@ -55,6 +55,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 14-manejo-medicamentos.js | Manejo, aplicação de medicamento integrada ao estoque, troca de lote |
 | 15-backup.js | Backup manual em arquivo |
 | 16-navegacao.js | Histórico de telas: o "‹ Voltar" volta à tela anterior com filtros, busca e rolagem; `recarregarTelaAtual()` redesenha a tela aberta depois de salvar |
+| 17-analise-zootecnica.js | Aba Análise: página inicial e análise individual (dias, peso ganho, GMD, margem de contribuição) e registro de pesagem com peso em kg |
 | 99-iniciar.js | Inicialização e registro do service worker |
 
 ## Módulos — `js/modulos/`
@@ -64,7 +65,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 01-troca-lote-ajustes.js | Correções visuais da troca de lote no iPhone | (CSS e textos) |
 | 02-troca-lote.js | Fluxo guiado de troca de lote | `telaTrocaLote` e auxiliares |
 | 03-saida-animais.js | Venda/morte individual, múltipla, por lote ou grupo | `formSaida`, `blocoSaida` |
-| 04-calculadora-pecuaria.js | Calculadora da Pecuária: valor da negociação, ponto de equilíbrio da recria/engorda e macho ou fêmea | `telaPainel`, `telaCalculadora*`, `ptEquilibrio`, `compararMachoFemea` |
+| 04-calculadora-pecuaria.js | Calculadora da Pecuária (visual em css/estilo.css): valor da negociação, ponto de equilíbrio da recria/engorda e macho ou fêmea | `telaPainel`, `telaCalculadora*`, `ptEquilibrio`, `compararMachoFemea` |
 | 05-saida-menu.js | Página Venda / Morte de Animal | `telaVendaMorteAnimal` |
 | 06-venda-financeiro.js | Cálculo único da venda e integração com o Financeiro | `formLancamento`, `salvarVendaV92` |
 | 07-financeiro-classificacao.js | Natureza (receita/custo/despesa/investimento) e apropriação | `formLancamento`, `finResumo`, `finLancamentos` |

@@ -5,8 +5,8 @@
      navegador a baixar a versão nova e é de onde vem o "Versão N" da tela inicial.
    Regras de versão e de arquivos novos: ver CLAUDE.md e ARQUITETURA.md. */
 
-const CACHE = "rebanho-v163-perfil-analise";
-const APP_VERSION = "163";
+const CACHE = "rebanho-v165-analise-individual";
+const APP_VERSION = "165";
 
 // Todos os arquivos do app (mesma ordem do index.html). Arquivo .js novo: incluir aqui E no index.html.
 const ARQUIVOS = [
@@ -16,7 +16,7 @@ const ARQUIVOS = [
   "./js/app/04-interface-base.js", "./js/app/05-instalar-primeiros-passos.js", "./js/app/06-inicio.js",
   "./js/app/07-painel-pastos-avisos.js", "./js/app/08-lotes-animais.js", "./js/app/09-perfil-nuvem-sincronizacao.js",
   "./js/app/10-formularios.js", "./js/app/11-financeiro.js", "./js/app/12-estoque.js",
-  "./js/app/13-grupos-pastos-cadastros.js", "./js/app/14-manejo-medicamentos.js", "./js/app/15-backup.js", "./js/app/16-navegacao.js",
+  "./js/app/13-grupos-pastos-cadastros.js", "./js/app/14-manejo-medicamentos.js", "./js/app/15-backup.js", "./js/app/16-navegacao.js", "./js/app/17-analise-zootecnica.js",
   "./js/modulos/01-troca-lote-ajustes.js", "./js/modulos/02-troca-lote.js", "./js/modulos/03-saida-animais.js",
   "./js/modulos/04-calculadora-pecuaria.js", "./js/modulos/05-saida-menu.js", "./js/modulos/06-venda-financeiro.js",
   "./js/modulos/07-financeiro-classificacao.js", "./js/modulos/08-animais-baixados.js", "./js/modulos/09-lancamentos-estoque-ui.js",

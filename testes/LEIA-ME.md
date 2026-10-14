@@ -7,7 +7,7 @@ Preparação (uma vez): `npm i -g playwright` (o Chromium já precisa estar inst
 ```bash
 # na raiz do repositório
 python3 -m http.server 8765 &                 # serve o app
-python3 testes/conferir_arquivos.py           # index.html × sw.js × disco
+python3 testes/conferir_arquivos.py           # index.html × sw.js × disco + css bem formado
 NODE_PATH=$(npm root -g) node testes/sincronizacao_dois_aparelhos.js
 NODE_PATH=$(npm root -g) node testes/navegacao_voltar.js
 ```
