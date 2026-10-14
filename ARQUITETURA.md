@@ -45,7 +45,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 04-interface-base.js | Janela (`abrir`/`fechar`), ícones SVG (`ico`), menu inferior, tela de login |
 | 05-instalar-primeiros-passos.js | Tela "Instalar o app" e cadastro inicial obrigatório |
 | 06-inicio.js | Página inicial: pendências, atalhos, Rebanho hoje, Financeiro, nascidos |
-| 07-painel-pastos-avisos.js | Gestão Operacional (módulos), pastos, avisos e próximas doses |
+| 07-painel-pastos-avisos.js | Gestão Operacional (módulos), pastos (inclui "Trocar lote de pasto", usado também no atalho do Início), avisos e próximas doses |
 | 08-lotes-animais.js | Lotes e Grupos, lote (com "Selecionar vários" para mover animais de lote), lista e ficha do animal |
 | 09-perfil-nuvem-sincronizacao.js | Perfil, conta, sincronização (envio/recebimento) e backup na nuvem |
 | 10-formularios.js | Cadastros de propriedade, marca e lote |
@@ -54,7 +54,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 13-grupos-pastos-cadastros.js | Grupos, cadastro de pastos, saída e edição do animal |
 | 14-manejo-medicamentos.js | Manejo, aplicação de medicamento integrada ao estoque, troca de lote |
 | 15-backup.js | Backup manual em arquivo |
-| 16-navegacao.js | Histórico de telas: o "‹ Voltar" volta à tela anterior com filtros, busca e rolagem |
+| 16-navegacao.js | Histórico de telas: o "‹ Voltar" volta à tela anterior com filtros, busca e rolagem; `recarregarTelaAtual()` redesenha a tela aberta depois de salvar |
 | 99-iniciar.js | Inicialização e registro do service worker |
 
 ## Módulos — `js/modulos/`

@@ -121,7 +121,7 @@ async function telaInicio(){
 
     <div class="home-sec">${ico("grade")}Atalhos rápidos</div>
     <div class="atalhos">
-      <button class="atalho" onclick="atalhoTrocarPasto()"><span class="at-ic">${ico("pasto")}</span>Trocar lote de pasto</button>
+      <button class="atalho" onclick="formTrocarPasto()"><span class="at-ic">${ico("pasto")}</span>Trocar lote de pasto</button>
       <button class="atalho" onclick="atalhoServico()"><span class="at-ic">${ico("chave")}</span>Serviço prestado</button>
       <button class="atalho" onclick="atalhoEstoque()"><span class="at-ic">${ico("caixa")}</span>Entrada no estoque</button>
       <button class="atalho" onclick="formNovoAviso()"><span class="at-ic">${ico("sino")}</span>Cadastrar aviso</button>
@@ -168,50 +168,6 @@ async function abrirAnimaisFiltro(tipo,crit){
   const t=document.getElementById("f_tipo");if(!t)return;
   t.value=tipo;atualizarCriterioFiltroAnimais();
   const c=document.getElementById("f_criterio");if(c){c.value=crit;filtrarAnimais();}
-}
-// Trocar o lote de pasto: fecha o período do pasto antigo e ocupa o novo
-async function atalhoTrocarPasto(){
-  if(!(await podeUsarApp("Trocar lote de pasto")))return;
-  const {propriedades,lotes,pastos,animais}=await tudo();
-  if(!lotes.length)return alert("Cadastre um lote primeiro.");
-  if(!pastos.length)return alert("Cadastre um pasto primeiro (Gestão Operacional › Gestão de Pastos).");
-  const nomeProp=id=>(propriedades.find(p=>p.id===id)||{}).nome||"";
-  const ativosLote=id=>animais.filter(a=>a.status==="Ativo"&&a.loteAtualId===id).length;
-  const pastoDoLote=id=>pastos.find(p=>p.status==="Ocupado"&&p.loteId===id);
-  const optLote=`<option value="">— selecione —</option>`+lotes.map(l=>{const pa=pastoDoLote(l.id);
-    return`<option value="${l.id}">${esc(l.nome)} (${ativosLote(l.id)})${pa?` — hoje no ${esc(pa.nome)}`:""}</option>`;}).join("");
-  const sit=p=>p.status==="Ocupado"?`ocupado${p.loteId?` por ${esc((lotes.find(l=>l.id===p.loteId)||{}).nome||"lote")}`:""}`:(p.status==="Descanso"?"em descanso":"livre");
-  const optPasto=`<option value="">— selecione —</option>`+pastos.map(p=>`<option value="${p.id}">${esc(p.nome)}${propriedades.length>1&&nomeProp(p.propriedadeId)?` · ${esc(nomeProp(p.propriedadeId))}`:""} — ${sit(p)}</option>`).join("");
-  abrir(`<h2>Trocar lote de pasto</h2>
-    <label>Lote *</label><select id="tp_lote">${optLote}</select>
-    <label>Novo pasto *</label><select id="tp_pasto">${optPasto}</select>
-    <label>Data da troca</label><input id="tp_data" type="date" value="${hoje()}" max="${hoje()}">
-    <label>O pasto de onde o lote saiu fica</label>
-    <select id="tp_saida"><option value="Descanso">Em descanso (capim recuperando)</option><option value="Livre">Livre</option></select>
-    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
-      <button class="btn" onclick="salvarTrocaPasto()">Salvar</button></div>`);
-}
-async function salvarTrocaPasto(){
-  const loteId=val("tp_lote"),pastoId=val("tp_pasto"),data=val("tp_data")||hoje(),saida=val("tp_saida")||"Descanso";
-  if(!loteId)return alert("Selecione o lote.");
-  if(!pastoId)return alert("Selecione o novo pasto.");
-  if(data>hoje())return alert("A data da troca não pode ser no futuro.");
-  const quando=data===hoje()?Date.now():dataParaTs(data);
-  const pastos=await getAll("pastos");
-  const destino=pastos.find(p=>p.id===pastoId);if(!destino)return;
-  if(destino.status==="Ocupado"&&destino.loteId===loteId)return alert("Este lote já está nesse pasto.");
-  if(destino.status==="Ocupado"&&destino.loteId&&destino.loteId!==loteId){
-    const outro=await get("lotes",destino.loteId);
-    return alert(`O pasto ${destino.nome} está ocupado pelo lote ${outro?outro.nome:"outro"}. Troque esse lote de pasto primeiro ou escolha outro pasto.`);
-  }
-  const fechaPeriodo=(p)=>{if(!p.historico)p.historico=[];if(p.statusDesde==null)p.statusDesde=p.criadoEm||quando;
-    p.historico.push({status:p.status||"Livre",inicio:p.statusDesde,fim:quando,loteId:p.loteId||null});p.statusDesde=quando;};
-  // pasto de onde o lote sai
-  for(const p of pastos.filter(x=>x.id!==pastoId&&x.status==="Ocupado"&&x.loteId===loteId)){
-    fechaPeriodo(p);p.status=saida;p.loteId=null;await put("pastos",p);
-  }
-  fechaPeriodo(destino);destino.status="Ocupado";destino.loteId=loteId;await put("pastos",destino);
-  fechar();alert("Troca de pasto registrada.");renderSeguro();
 }
 // Serviço prestado: abre o lançamento como custo de produção · mão de obra
 async function atalhoServico(){

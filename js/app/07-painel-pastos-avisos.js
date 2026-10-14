@@ -276,10 +276,56 @@ async function telaGestaoPasto(){
   if(!pastos.length)lst=`<div class="vazio"><div class="big">🌱</div><b>Nenhum pasto cadastrado</b><div class="meta">Toque em "Novo pasto" para começar.</div></div>`;
   $t.innerHTML=`<button class="voltar" onclick="_editPastos=false;irAba('painel')">‹ Gestão Operacional</button>
     <div class="sechead"><span class="sic">🌱</span><h2>Gestão do Pasto</h2></div>
-    <div class="lado"><button class="btn" onclick="formNovoPasto()">+ Novo pasto</button>
+    ${pastos.length?`<button class="btn btn-ico" onclick="formTrocarPasto()">${ico("setas")} Trocar lote de pasto</button>`:""}
+    <div class="lado"><button class="btn ${pastos.length?"btn-sec":""}" onclick="formNovoPasto()">+ Novo pasto</button>
       ${pastos.length?`<button class="btn btn-sec" onclick="_editPastos=!_editPastos;telaGestaoPasto()">${_editPastos?"✓ Concluir":"✎ Editar"}</button>`:""}</div>
     ${_editPastos?`<div class="meta" style="margin:2px 4px 6px">Modo edição ligado — toque em ✎ para editar ou ✕ para excluir um pasto.</div>`:""}
     ${lst}`;
+}
+/* Trocar o lote de pasto (atalho do Início e botão da Gestão do Pasto): fecha o período do pasto
+   antigo e ocupa o novo. Depois de salvar, redesenha a tela em que a pessoa está. */
+async function formTrocarPasto(){
+  if(!(await podeUsarApp("Trocar lote de pasto")))return;
+  const {propriedades,lotes,pastos,animais}=await tudo();
+  if(!lotes.length)return alert("Cadastre um lote primeiro.");
+  if(!pastos.length)return alert("Cadastre um pasto primeiro (Gestão Operacional › Gestão de Pastos).");
+  const nomeProp=id=>(propriedades.find(p=>p.id===id)||{}).nome||"";
+  const ativosLote=id=>animais.filter(a=>a.status==="Ativo"&&a.loteAtualId===id).length;
+  const pastoDoLote=id=>pastos.find(p=>p.status==="Ocupado"&&p.loteId===id);
+  const optLote=`<option value="">— selecione —</option>`+lotes.map(l=>{const pa=pastoDoLote(l.id);
+    return`<option value="${l.id}">${esc(l.nome)} (${ativosLote(l.id)})${pa?` — hoje no ${esc(pa.nome)}`:""}</option>`;}).join("");
+  const sit=p=>p.status==="Ocupado"?`ocupado${p.loteId?` por ${esc((lotes.find(l=>l.id===p.loteId)||{}).nome||"lote")}`:""}`:(p.status==="Descanso"?"em descanso":"livre");
+  const optPasto=`<option value="">— selecione —</option>`+pastos.map(p=>`<option value="${p.id}">${esc(p.nome)}${propriedades.length>1&&nomeProp(p.propriedadeId)?` · ${esc(nomeProp(p.propriedadeId))}`:""} — ${sit(p)}</option>`).join("");
+  abrir(`<h2>Trocar lote de pasto</h2>
+    <label>Lote *</label><select id="tp_lote">${optLote}</select>
+    <label>Novo pasto *</label><select id="tp_pasto">${optPasto}</select>
+    <label>Data da troca</label><input id="tp_data" type="date" value="${hoje()}" max="${hoje()}">
+    <label>O pasto de onde o lote saiu fica</label>
+    <select id="tp_saida"><option value="Descanso">Em descanso (capim recuperando)</option><option value="Livre">Livre</option></select>
+    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
+      <button class="btn" onclick="salvarTrocaPasto()">Salvar</button></div>`);
+}
+async function salvarTrocaPasto(){
+  const loteId=val("tp_lote"),pastoId=val("tp_pasto"),data=val("tp_data")||hoje(),saida=val("tp_saida")||"Descanso";
+  if(!loteId)return alert("Selecione o lote.");
+  if(!pastoId)return alert("Selecione o novo pasto.");
+  if(data>hoje())return alert("A data da troca não pode ser no futuro.");
+  const quando=data===hoje()?Date.now():dataParaTs(data);
+  const pastos=await getAll("pastos");
+  const destino=pastos.find(p=>p.id===pastoId);if(!destino)return;
+  if(destino.status==="Ocupado"&&destino.loteId===loteId)return alert("Este lote já está nesse pasto.");
+  if(destino.status==="Ocupado"&&destino.loteId&&destino.loteId!==loteId){
+    const outro=await get("lotes",destino.loteId);
+    return alert(`O pasto ${destino.nome} está ocupado pelo lote ${outro?outro.nome:"outro"}. Troque esse lote de pasto primeiro ou escolha outro pasto.`);
+  }
+  const fechaPeriodo=(p)=>{if(!p.historico)p.historico=[];if(p.statusDesde==null)p.statusDesde=p.criadoEm||quando;
+    p.historico.push({status:p.status||"Livre",inicio:p.statusDesde,fim:quando,loteId:p.loteId||null});p.statusDesde=quando;};
+  // pasto de onde o lote sai
+  for(const p of pastos.filter(x=>x.id!==pastoId&&x.status==="Ocupado"&&x.loteId===loteId)){
+    fechaPeriodo(p);p.status=saida;p.loteId=null;await put("pastos",p);
+  }
+  fechaPeriodo(destino);destino.status="Ocupado";destino.loteId=loteId;await put("pastos",destino);
+  fechar();alert("Troca de pasto registrada.");recarregarTelaAtual();
 }
 async function excluirPastoLista(id){
   const pt=await get("pastos",id);

@@ -136,6 +136,13 @@ async function navVoltar(){
   return true;
 }
 
+// Redesenha a tela em que a pessoa está (ex.: depois de salvar numa janela), sem mexer no histórico.
+async function recarregarTelaAtual(){
+  if(!_navAtual||typeof window[_navAtual.nome]!=="function")return renderSeguro();
+  const y=window.scrollY||0;_rolarPara=y;setTimeout(()=>{_rolarPara=0;},600);
+  await window[_navAtual.nome](...(_navAtual.args||[]));
+}
+
 function instalarHistoricoNavegacao(){
   TELAS_NAVEGACAO.forEach(nome=>{
     const original=window[nome];

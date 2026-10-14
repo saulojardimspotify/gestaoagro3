@@ -355,3 +355,7 @@
   .sel-barra .sel-info .btn-fant{color:var(--verde);font-weight:700;padding:2px 6px;}
   #lote_lista.selecionando{padding-bottom:130px;}
   .sel-ok{margin:0 0 12px;padding:11px 14px;border-radius:13px;background:var(--verde-lite);color:var(--verde-esc);font-size:14px;}
+
+  /* Botão com ícone de traço antes do texto (V162) */
+  .btn.btn-ico{display:flex;align-items:center;justify-content:center;gap:8px;}
+  .btn.btn-ico svg.ico{width:20px;height:20px;}
