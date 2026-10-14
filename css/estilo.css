@@ -437,4 +437,24 @@
   .an-linha b{text-align:right;}
   .an-linha small{display:none;}
   b.neg,span.neg{color:var(--perigo);}
+  /* Custo por animal (V168) */
+  .an-destaques{grid-template-columns:repeat(2,1fr);}
+  .an-resumo .full{grid-column:1/-1;}
+  .an-nums{grid-template-columns:repeat(4,1fr);gap:6px;}
+  .an-nums b{font-size:13px;}
+  .an-link{color:var(--verde)!important;font-weight:700;}
+  .an-custo-total{background:var(--verde-lite);border-radius:14px;padding:12px 14px;margin:8px 0 10px;}
+  .an-custo-total span{display:block;font-size:12px;color:var(--muted);}
+  .an-custo-total b{font-size:22px;color:var(--verde-esc);}
+  .an-custo-cats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;}
+  .an-custo-cats div{border:1px solid var(--linha);border-radius:11px;padding:8px 10px;}
+  .an-custo-cats span{display:block;font-size:11.5px;color:var(--muted);}
+  .an-custo-cats b{font-size:14px;color:var(--verde-esc);}
+  .an-custo-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--linha);font-size:14px;}
+  .an-custo-item .meta{font-size:12px;margin-top:2px;}
+  /* Histórico de peso (V169) */
+  .an-peso-item{padding:10px 0;border-bottom:1px solid var(--linha);}
+  .an-peso-cab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14.5px;}
+  .an-peso-per{display:flex;justify-content:space-between;gap:8px;margin-top:4px;font-size:12.5px;color:var(--muted);}
+  .an-peso-per b{color:var(--verde-esc);}
 
