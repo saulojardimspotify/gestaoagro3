@@ -25,7 +25,7 @@ Todos os arquivos são **scripts clássicos**: funções e variáveis de nível 
 compartilhadas entre arquivos. Por isso a ordem do `index.html` é a ordem de execução:
 
 1. `js/app/01…16` — núcleo (dados, utilidades, telas, histórico de navegação).
-2. `js/modulos/01…17` — módulos. Muitos **substituem** uma função do núcleo guardando a original
+2. `js/modulos/01…13` — módulos. Muitos **substituem** uma função do núcleo guardando a original
    (ex.: `const base=window.telaEstoque; window.telaEstoque=async function(){…}`). Um módulo só pode
    ajustar o que já foi carregado antes dele.
 3. `js/app/99-iniciar.js` — liga o histórico de navegação, abre o banco, desenha a primeira tela e
@@ -42,13 +42,13 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 01-config-conta.js | Endereço e chave do Supabase, sessão (login), `sbFetch`, permissões de uso |
 | 02-banco-local.js | IndexedDB: `abrirDB`, `get`, `getAll`, `put`, `del` (com metadados de sincronização) |
 | 03-utilidades-constantes.js | Datas, moeda, rótulos de animal, raças, categorias, estoque/medicamentos, migração de medicamentos |
-| 04-interface-base.js | Janela (`abrir`/`fechar`), ícones SVG (`ico`), menu inferior, tela de login |
+| 04-interface-base.js | Ícones SVG (`ico`), menu inferior e `render()` das abas, tela de login, aba Análise (em construção) |
 | 05-instalar-primeiros-passos.js | Tela "Instalar o app" e cadastro inicial obrigatório |
 | 06-inicio.js | Página inicial: pendências, atalhos, Rebanho hoje, Financeiro, nascidos |
 | 07-painel-pastos-avisos.js | Gestão Operacional (módulos), pastos (inclui "Trocar lote de pasto", usado também no atalho do Início), avisos e próximas doses |
 | 08-lotes-animais.js | Lotes e Grupos, lote (com "Selecionar vários" para mover animais de lote), lista e ficha do animal |
-| 09-perfil-nuvem-sincronizacao.js | Perfil, conta, sincronização (envio/recebimento) e backup na nuvem |
-| 10-formularios.js | Cadastros de propriedade, marca e lote |
+| 09-perfil-nuvem-sincronizacao.js | Perfil (aberto pela foto do topo): dados do usuário, cadastro/edição de propriedades e marcas, conta, sincronização e cópias de segurança |
+| 10-formularios.js | Janela (`abrir`/`fechar`), menu ☰, "Sobre o app" e entrada do Financeiro |
 | 11-financeiro.js | Resumo, lançamentos, relatórios e custos de produção por lote |
 | 12-estoque.js | Estoque de insumos: itens, entradas, consumos, ficha e foto do item |
 | 13-grupos-pastos-cadastros.js | Grupos, cadastro de pastos, saída e edição do animal |
@@ -63,21 +63,17 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 |---|---|---|
 | 01-troca-lote-ajustes.js | Correções visuais da troca de lote no iPhone | (CSS e textos) |
 | 02-troca-lote.js | Fluxo guiado de troca de lote | `telaTrocaLote` e auxiliares |
-| 03-perfil-backup.js | Textos e visual da área de backup do Perfil | (CSS) |
-| 04-perfil-limpeza.js | Remove a seção Cadastros do Perfil | (DOM) |
-| 05-inicio-menu-limpeza.js | Simplifica o menu + | `menuAdicionar` |
-| 06-saida-animais.js | Venda/morte individual, múltipla, por lote ou grupo | `formSaida`, `blocoSaida` |
-| 07-calculadora-pecuaria.js | Calculadora da Pecuária: valor da negociação, ponto de equilíbrio da recria/engorda e macho ou fêmea | `telaPainel`, `telaCalculadora*`, `ptEquilibrio`, `compararMachoFemea` |
-| 08-saida-menu.js | Página Venda / Morte de Animal | `telaVendaMorteAnimal` |
-| 09-venda-financeiro.js | Cálculo único da venda e integração com o Financeiro | `formLancamento`, `salvarVendaV92` |
-| 10-financeiro-classificacao.js | Natureza (receita/custo/despesa/investimento) e apropriação | `formLancamento`, `finResumo`, `finLancamentos` |
-| 11-animais-baixados.js | Vendidos/mortos fora da lista ativa | `telaAnimais`, `telaAnimaisBaixados` |
-| 12-lancamentos-estoque-ui.js | Filtros do financeiro, pagamentos, lista do estoque, consumo com destino | `telaEstoque`, `salvarConsumoInsumo`, `finLancamentos` |
-| 13-compra-animal.js | Cálculo da compra no cadastro do animal | `formNovoAnimal`, `salvarAnimal` |
-| 14-contabilidade.js | Livro Diário: partidas automáticas, estornos, baixa por morte | `put`, `del`, `finRelatorios`, `formNovoAnimal` |
-| 15-busca-versao.js | Busca no Livro Diário e "Versão N" na tela inicial | `telaInicio`, `finHistoricoContabil` |
-| 16-gestao-dados.js | Edição de operações e reinício dos dados | `editarOperacaoV116`, `resetTotalV116` |
-| 17-perfil-gestao.js | Botão "Gerenciar dados" no Perfil | `gerenciarDadosV116` |
+| 03-saida-animais.js | Venda/morte individual, múltipla, por lote ou grupo | `formSaida`, `blocoSaida` |
+| 04-calculadora-pecuaria.js | Calculadora da Pecuária: valor da negociação, ponto de equilíbrio da recria/engorda e macho ou fêmea | `telaPainel`, `telaCalculadora*`, `ptEquilibrio`, `compararMachoFemea` |
+| 05-saida-menu.js | Página Venda / Morte de Animal | `telaVendaMorteAnimal` |
+| 06-venda-financeiro.js | Cálculo único da venda e integração com o Financeiro | `formLancamento`, `salvarVendaV92` |
+| 07-financeiro-classificacao.js | Natureza (receita/custo/despesa/investimento) e apropriação | `formLancamento`, `finResumo`, `finLancamentos` |
+| 08-animais-baixados.js | Vendidos/mortos fora da lista ativa | `telaAnimais`, `telaAnimaisBaixados` |
+| 09-lancamentos-estoque-ui.js | Filtros do financeiro, pagamentos, lista do estoque, consumo com destino | `telaEstoque`, `salvarConsumoInsumo`, `finLancamentos` |
+| 10-compra-animal.js | Cálculo da compra no cadastro do animal | `formNovoAnimal`, `salvarAnimal` |
+| 11-contabilidade.js | Livro Diário: partidas automáticas, estornos, baixa por morte | `put`, `del`, `finRelatorios`, `formNovoAnimal` |
+| 12-busca-versao.js | Busca no Livro Diário e "Versão N" na tela inicial | `telaInicio`, `finHistoricoContabil` |
+| 13-gestao-dados.js | Edição de operações e reinício dos dados | `editarOperacaoV116`, `resetTotalV116` |
 
 ## Navegação e botão "‹ Voltar" (V157)
 
@@ -85,7 +81,8 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
   tela, a anterior vai para uma pilha com o valor dos campos (filtros, busca, marcações) e a rolagem.
 - Qualquer botão `class="voltar"` da tela usa essa pilha. O `onclick` escrito no botão só vale quando não há
   histórico (ex.: entrou pelo menu de baixo) e indica a tela "mãe".
-- Menu de baixo e tela Início começam pilha nova; as abas do Financeiro contam como uma tela só.
+- Menu de baixo (Início, Operacional, Financeiro, Análise), tela Início e Perfil (aberto pela foto do
+  usuário no topo) começam pilha nova; as abas do Financeiro contam como uma tela só.
 - Tela nova: incluir o nome em `TELAS_NAVEGACAO` e o título em `TITULOS_NAVEGACAO`.
 
 ## Dados e sincronização

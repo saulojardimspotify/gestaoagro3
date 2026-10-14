@@ -45,7 +45,7 @@ async function telaPainel(){
   let props="";
   if(propriedades.length===0){
     props=`<div class="card vazio"><div class="big">🏡</div><b>Nenhuma propriedade</b>
-      <div class="meta">Toque no + e cadastre sua primeira propriedade.</div></div>`;
+      <div class="meta">Cadastre sua primeira propriedade no Perfil (foto no canto de cima).</div></div>`;
   }else{
     for(const p of propriedades){
       const arr=contaProp(p.id);

@@ -308,23 +308,10 @@ async function finConfig(){
     <div class="meta" style="padding:0 4px;margin-top:8px;line-height:1.5">Não sou contador — para fins de imposto (Livro Caixa do Produtor Rural, que é regime de caixa) confirme com um contador rural.</div>`;
 }
 
-function sobreApp(){abrir(`<h2>Gestão do Rebanho</h2>
-  <div class="meta">Controle de rebanho por lote e grupos — vacinação, manejo, nascimentos, saídas e histórico por animal.</div>
-  <div class="meta" style="margin-top:8px">Funciona offline. Os dados ficam guardados neste aparelho — lembre de fazer backup em Perfil.</div>
-  <button class="btn" style="margin-top:16px" onclick="fechar()">Fechar</button>`);}
-
-function formNovaPropriedade(){abrir(`<h2>Nova propriedade</h2>
-  <label>Nome *</label><input id="p_nome" placeholder="Ex: Fazenda Garrafão">
-  <label>Localização</label><input id="p_local" placeholder="Ex: Garrafão - Campos RJ">
-  <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
-    <button class="btn" onclick="salvarPropriedade()">Salvar</button></div>`);}
-async function salvarPropriedade(){const n=val("p_nome");if(!n)return alert("Dê um nome.");
-  await put("propriedades",{id:uid(),nome:n,local:val("p_local"),criadoEm:Date.now()});fechar();render();}
-
 async function formNovoLote(propFixa){
   if(!(await podeUsarApp("Cadastrar lote")))return;
   const props=await getAll("propriedades");
-  if(props.length===0){fechar();return alert("Cadastre uma propriedade primeiro (menu + ).");}
+  if(props.length===0){fechar();return alert("Cadastre uma propriedade primeiro (Perfil › Propriedades).");}
   const opt=props.map(p=>`<option value="${p.id}" ${p.id===propFixa?"selected":""}>${esc(p.nome)}</option>`).join("");
   abrir(`<h2>Novo lote</h2>
     <label>Propriedade *</label><select id="l_prop">${opt}</select>

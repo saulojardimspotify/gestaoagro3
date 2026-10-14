@@ -679,10 +679,6 @@ async function formEvento(id,tipoFixo){const _ab=await get("animais",id);if(_ab&
       <button class="btn" onclick="salvarEvento('${id}')">Salvar</button></div>`);}
 async function salvarEvento(id){await registrarEvento(id,val("e_tipo"),val("e_data"),val("e_det"),{hora:val("e_hora")});fechar();verAnimal(id);}
 
-async function apagarPropriedade(id){
-  const ls=(await getAll("lotes")).filter(l=>l.propriedadeId===id);
-  if(ls.length)return alert("Apague os lotes desta propriedade antes.");
-  if(!confirm("Apagar esta propriedade?"))return;await del("propriedades",id);irAba('painel');}
 async function apagarLote(id){
   const as=(await getAll("animais")).filter(a=>a.loteAtualId===id);
   const ativos=as.filter(a=>a.status==="Ativo").length, baixados=as.length-ativos;

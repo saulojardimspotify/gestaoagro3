@@ -18,7 +18,7 @@
 <div class="topo">
   <button class="icobtn" onclick="menuConfig()" aria-label="Menu"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   <div class="tit"><h1>Gestão do Rebanho</h1></div>
-  <button class="mais" onclick="menuAdicionar()" aria-label="Adicionar"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button class="topo-avatar avatar" id="topoAvatar" onclick="abrirPerfil()" aria-label="Meu perfil"></button>
 </div>
 
 <main id="tela"></main>
@@ -27,7 +27,7 @@
   <button data-aba="inicio" class="ativo"><span class="ic" data-ico="casa"></span><span>Início</span></button>
   <button data-aba="painel"><span class="ic" data-ico="boi"></span><span>Operacional</span></button>
   <button data-aba="financeiro"><span class="ic" data-ico="carteira"></span><span>Financeiro</span></button>
-  <button data-aba="perfil"><span class="ic" data-ico="pessoa"></span><span>Perfil</span></button>
+  <button data-aba="analise"><span class="ic" data-ico="grafico"></span><span>Análise</span></button>
 </nav>
 
 <div class="ov" id="ov"><div class="modal" id="md"></div></div>
@@ -52,21 +52,17 @@
 <script src="js/app/16-navegacao.js"></script>
 <script src="js/modulos/01-troca-lote-ajustes.js"></script>
 <script src="js/modulos/02-troca-lote.js"></script>
-<script src="js/modulos/03-perfil-backup.js"></script>
-<script src="js/modulos/04-perfil-limpeza.js"></script>
-<script src="js/modulos/05-inicio-menu-limpeza.js"></script>
-<script src="js/modulos/06-saida-animais.js"></script>
-<script src="js/modulos/07-calculadora-pecuaria.js"></script>
-<script src="js/modulos/08-saida-menu.js"></script>
-<script src="js/modulos/09-venda-financeiro.js"></script>
-<script src="js/modulos/10-financeiro-classificacao.js"></script>
-<script src="js/modulos/11-animais-baixados.js"></script>
-<script src="js/modulos/12-lancamentos-estoque-ui.js"></script>
-<script src="js/modulos/13-compra-animal.js"></script>
-<script src="js/modulos/14-contabilidade.js"></script>
-<script src="js/modulos/15-busca-versao.js"></script>
-<script src="js/modulos/16-gestao-dados.js"></script>
-<script src="js/modulos/17-perfil-gestao.js"></script>
+<script src="js/modulos/03-saida-animais.js"></script>
+<script src="js/modulos/04-calculadora-pecuaria.js"></script>
+<script src="js/modulos/05-saida-menu.js"></script>
+<script src="js/modulos/06-venda-financeiro.js"></script>
+<script src="js/modulos/07-financeiro-classificacao.js"></script>
+<script src="js/modulos/08-animais-baixados.js"></script>
+<script src="js/modulos/09-lancamentos-estoque-ui.js"></script>
+<script src="js/modulos/10-compra-animal.js"></script>
+<script src="js/modulos/11-contabilidade.js"></script>
+<script src="js/modulos/12-busca-versao.js"></script>
+<script src="js/modulos/13-gestao-dados.js"></script>
 <script src="js/app/99-iniciar.js"></script>
 </body>
 </html>

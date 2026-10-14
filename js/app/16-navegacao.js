@@ -22,12 +22,12 @@ const TELAS_NAVEGACAO=[
   "telaManejo","telaMedicamentosManejo","telaTrocaLote","escolherModoTrocaV81","telaDestinoTrocaV81",
   "telaEstoque","telaCalculadoraPecuaria","telaCalculadoraNegociacao","telaCalculadoraEquilibrio","telaCalculadoraMachoFemea","telaVendaMorteAnimal",
   "menuFinanceiro","finResumo","finLancamentos","finRelatorios","finConfig","finHistoricoContabil",
-  "telaPerfil","telaInstalar","telaBloqueada","telaPrimeirosPassos"
+  "telaPerfil","telaAnaliseZootecnica","telaInstalar","telaBloqueada","telaPrimeirosPassos"
 ];
 // Telas que são a mesma página (abas do Financeiro): trocar de aba não cria um passo novo.
 const GRUPO_NAVEGACAO={menuFinanceiro:"financeiro",finResumo:"financeiro",finLancamentos:"financeiro",finRelatorios:"financeiro",finConfig:"financeiro"};
-// Telas que sempre começam uma pilha nova.
-const RAIZES_NAVEGACAO=new Set(["telaInicio","telaBloqueada","telaPrimeirosPassos"]);
+// Telas que sempre começam uma pilha nova (Início, Perfil pela foto do topo, Análise...).
+const RAIZES_NAVEGACAO=new Set(["telaInicio","telaBloqueada","telaPrimeirosPassos","telaPerfil","telaAnaliseZootecnica"]);
 // Texto do botão "‹ ..." conforme a tela para onde ele vai voltar.
 const TITULOS_NAVEGACAO={
   telaInicio:"Início",telaPainel:"Gestão Operacional",telaAvisos:"Avisos",telaGestaoPasto:"Gestão do Pasto",
@@ -39,7 +39,7 @@ const TITULOS_NAVEGACAO={
   telaCalculadoraPecuaria:"Calculadora da Pecuária",telaCalculadoraNegociacao:"Negociação",telaCalculadoraEquilibrio:"Ponto de equilíbrio",telaCalculadoraMachoFemea:"Macho ou fêmea",
   telaVendaMorteAnimal:"Venda / Morte",menuFinanceiro:"Financeiro",finResumo:"Financeiro",
   finLancamentos:"Lançamentos",finRelatorios:"Relatórios",finConfig:"Configurações",
-  finHistoricoContabil:"Livro Diário",telaPerfil:"Perfil",telaInstalar:"Voltar"
+  finHistoricoContabil:"Livro Diário",telaPerfil:"Perfil",telaAnaliseZootecnica:"Análise",telaInstalar:"Voltar"
 };
 const LIMITE_PILHA_NAVEGACAO=30;
 

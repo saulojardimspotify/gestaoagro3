@@ -1,4 +1,4 @@
-/* Gestão do Rebanho — js/modulos/07-calculadora-pecuaria.js
+/* Gestão do Rebanho — js/modulos/04-calculadora-pecuaria.js
    Calculadora da Pecuária (Gestão Operacional → Recursos e Alertas):
    - Valor financeiro de uma negociação (V100): peso líquido, valor total e peso médio.
    - Ponto de equilíbrio da recria/engorda (V158): dias ou GMD para o boi gordo valer o que custou o bezerro.

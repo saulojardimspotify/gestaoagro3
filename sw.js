@@ -5,8 +5,8 @@
      navegador a baixar a versão nova e é de onde vem o "Versão N" da tela inicial.
    Regras de versão e de arquivos novos: ver CLAUDE.md e ARQUITETURA.md. */
 
-const CACHE = "rebanho-v162-trocar-pasto";
-const APP_VERSION = "162";
+const CACHE = "rebanho-v163-perfil-analise";
+const APP_VERSION = "163";
 
 // Todos os arquivos do app (mesma ordem do index.html). Arquivo .js novo: incluir aqui E no index.html.
 const ARQUIVOS = [
@@ -17,12 +17,11 @@ const ARQUIVOS = [
   "./js/app/07-painel-pastos-avisos.js", "./js/app/08-lotes-animais.js", "./js/app/09-perfil-nuvem-sincronizacao.js",
   "./js/app/10-formularios.js", "./js/app/11-financeiro.js", "./js/app/12-estoque.js",
   "./js/app/13-grupos-pastos-cadastros.js", "./js/app/14-manejo-medicamentos.js", "./js/app/15-backup.js", "./js/app/16-navegacao.js",
-  "./js/modulos/01-troca-lote-ajustes.js", "./js/modulos/02-troca-lote.js", "./js/modulos/03-perfil-backup.js",
-  "./js/modulos/04-perfil-limpeza.js", "./js/modulos/05-inicio-menu-limpeza.js", "./js/modulos/06-saida-animais.js",
-  "./js/modulos/07-calculadora-pecuaria.js", "./js/modulos/08-saida-menu.js", "./js/modulos/09-venda-financeiro.js",
-  "./js/modulos/10-financeiro-classificacao.js", "./js/modulos/11-animais-baixados.js", "./js/modulos/12-lancamentos-estoque-ui.js",
-  "./js/modulos/13-compra-animal.js", "./js/modulos/14-contabilidade.js", "./js/modulos/15-busca-versao.js",
-  "./js/modulos/16-gestao-dados.js", "./js/modulos/17-perfil-gestao.js",
+  "./js/modulos/01-troca-lote-ajustes.js", "./js/modulos/02-troca-lote.js", "./js/modulos/03-saida-animais.js",
+  "./js/modulos/04-calculadora-pecuaria.js", "./js/modulos/05-saida-menu.js", "./js/modulos/06-venda-financeiro.js",
+  "./js/modulos/07-financeiro-classificacao.js", "./js/modulos/08-animais-baixados.js", "./js/modulos/09-lancamentos-estoque-ui.js",
+  "./js/modulos/10-compra-animal.js", "./js/modulos/11-contabilidade.js", "./js/modulos/12-busca-versao.js",
+  "./js/modulos/13-gestao-dados.js",
   "./js/app/99-iniciar.js"
 ];
 

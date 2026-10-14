@@ -55,6 +55,7 @@ const ICONES={
   info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.5h.01"/>',
   camera:'<path d="M4 8h3l1.6-2.4h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.4"/>',
   chave:'<path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3 8-8-1.3-1.3a4 4 0 0 1-5-5l2.5 2.5 2-2z"/><path d="M3 21l6-6"/>',
+  nuvem:'<path d="M7 18.5h10.5a4 4 0 0 0 .4-8 6 6 0 0 0-11.6-1.4A4.6 4.6 0 0 0 7 18.5z"/>',
   cadeado:'<rect x="4.5" y="10.5" width="15" height="10.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3M12 14.5v2.5"/>'
 };
 function ico(n){const d=ICONES[n];return d?`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`:"";}
@@ -81,6 +82,14 @@ document.getElementById("tela").addEventListener("animationstart",e=>{
 });
 // Posição de rolagem a aplicar quando a próxima tela aparecer (usado pelo "Voltar" — ver 16-navegacao.js).
 let _rolarPara=0;
+/* Aba "Análise" do menu de baixo (V163): área de análise zootécnica, ainda em construção.
+   Quando ganhar conteúdo, passa para um arquivo próprio (js/app/17-analise-zootecnica.js). */
+function telaAnaliseZootecnica(){
+  topoPagina();
+  $t.innerHTML=`<div class="sechead"><span class="sic" data-ico="grafico"></span><h2>Análise zootécnica</h2></div>
+    <div class="vazio"><div class="big">📊</div><b>Em construção</b>
+      <div class="meta">Aqui ficarão as análises do rebanho: desempenho, ganho de peso, natalidade e indicadores zootécnicos.</div></div>`;
+}
 function irAba(a){aba=a;document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("ativo",x.dataset.aba===a));renderSeguro();}
 async function render(){
   topoPagina();
@@ -88,11 +97,13 @@ async function render(){
   const user=await authUser();
   if(!user){document.body.classList.add("deslogado");return telaBloqueada();}
   document.body.classList.remove("deslogado");
+  atualizarAvatarTopo();
   if(aba==="perfil")return telaPerfil();
   // V126: conta sem cadastro básico vai para o passo a passo "Primeiros passos"
   const pend=await pendenciasIniciais();
   if(pend)return telaPrimeirosPassos(pend);
   if(aba==="financeiro")return menuFinanceiro();
+  if(aba==="analise")return telaAnaliseZootecnica();
   return ({inicio:telaInicio,painel:telaPainel,lotes:telaLotes,animais:telaAnimais}[aba]||telaInicio)();
 }
 async function renderSeguro(){

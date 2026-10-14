@@ -3,11 +3,26 @@
    Script clássico: as funções e variáveis de nível superior são globais e compartilhadas
    com os demais arquivos. A ordem de carregamento está no index.html. */
 
-/* ======================= PERFIL / CONFIG ======================= */
+/* ======================= PERFIL (V163) =======================
+   Aberto pela foto do usuário no topo (não fica mais no menu de baixo). Seções:
+   cabeçalho do perfil · Propriedades · Marcas / donos · Conta e nuvem · Cópia em arquivo · Aplicativo.
+   Os cadastros de propriedade e marca ficam aqui (o antigo botão "+" do topo saiu). */
+function abrirPerfil(){
+  aba="perfil";
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("ativo"));
+  renderSeguro();
+}
+// Foto (ou iniciais) do usuário no canto do topo; lê só o perfil guardado no aparelho.
+async function atualizarAvatarTopo(){
+  const el=document.getElementById("topoAvatar");if(!el)return;
+  let p=null;try{p=await get("perfil","perfil");}catch(_){}
+  const user=await authUser();
+  el.innerHTML=avatarHTML(p&&p.foto,(p&&p.nome)||(user&&user.email)||"");
+  el.classList.toggle("ativo",aba==="perfil");
+}
 async function telaPerfil(){
   topoPagina();
   const user=await authUser();
-
   if(!user){
     $t.innerHTML=`
       <div class="card" style="text-align:center;margin-top:10px">
@@ -19,47 +34,74 @@ async function telaPerfil(){
       </div>`;
     return;
   }
-
-  const {propriedades,marcas,lotes,animais,eventos,medicamentos,grupos}=await tudo();
+  const {propriedades,marcas,lotes,animais}=await tudo();
   const cfg=await getConfig(); const _dias=diasDesde(cfg.ultimoBackup); const _freq=cfg.lembreteDias||7;
   const p=await carregarPerfilIntegrado(user);
-
+  const ativos=animais.filter(a=>a.status==="Ativo");
+  const lotesDa=pid=>lotes.filter(l=>l.propriedadeId===pid);
+  const animaisDa=pid=>{const ids=new Set(lotesDa(pid).map(l=>l.id));return ativos.filter(a=>ids.has(a.loteAtualId)).length;};
+  const animaisMarca=mid=>ativos.filter(a=>a.marcaId===mid).length;
+  const secao=(icone,titulo,qtd)=>`<div class="sechead pf-sec"><span class="sic" data-ico="${icone}"></span><h2>${titulo}</h2>${qtd!=null?`<span class="pf-qtd">${qtd}</span>`:""}</div>`;
+  const itemProp=pr=>`<div class="card pf-item">
+      <div class="pf-ic pf-ic-foto rt" onclick="verPropriedade('${pr.id}')">${pr.foto?`<img src="${esc(pr.foto)}" alt="">`:ico("casa")}</div>
+      <div class="pf-txt rt" onclick="verPropriedade('${pr.id}')"><div class="ti">${esc(pr.nome)}</div>
+        <div class="meta">${pr.local?`📍 ${esc(pr.local)} · `:""}${lotesDa(pr.id).length} lote(s) · ${animaisDa(pr.id)} animal(is)</div></div>
+      <button class="pf-ed" onclick="formPropriedade('${pr.id}')" aria-label="Editar propriedade">${ico("lapis")}</button></div>`;
+  const itemMarca=m=>`<div class="card pf-item">
+      <div class="pf-ic"><span class="pf-sigla">${esc(m.sigla||"?")}</span></div>
+      <div class="pf-txt"><div class="ti">${esc(m.nome||m.sigla)}</div><div class="meta">Sigla ${esc(m.sigla||"—")} · ${animaisMarca(m.id)} animal(is) ativo(s)</div></div>
+      <button class="pf-ed" onclick="formMarca('${m.id}')" aria-label="Editar marca">${ico("lapis")}</button></div>`;
   $t.innerHTML=`
-    <div class="card" style="display:flex;align-items:center;gap:14px">
+    <div class="card pf-cab">
       <div class="avatar-wrap" onclick="formPerfil()">
         <div class="avatar">${avatarHTML(p.foto,p.nome||user.email||"Usuário")}</div><div class="avatar-cam">📷</div>
       </div>
       <div style="flex:1;min-width:0">
         <div class="ti" style="font-size:19px">${esc(p.nome||"Usuário")}</div>
         ${p.funcao?`<div class="meta">${esc(p.funcao)}</div>`:""}
+        <div class="meta" style="overflow-wrap:anywhere">✉️ ${esc(user.email||"")}</div>
         ${p.localizacao?`<div class="meta">📍 ${esc(p.localizacao)}</div>`:""}
-        <div class="meta">✉️ ${esc(user.email||"")}</div>
         ${p.telefone?`<div class="meta">📞 ${esc(p.telefone)}</div>`:""}
       </div>
-      <button class="btn-fant" style="padding:6px;color:var(--verde)" onclick="formPerfil()">✎</button>
+      <button class="pf-ed" onclick="formPerfil()" aria-label="Editar perfil">${ico("lapis")}</button>
     </div>
-    <div class="card"><div class="ti">Resumo</div>
-      <div class="meta" style="margin-top:4px">${propriedades.length} propriedades · ${lotes.length} lotes · ${grupos.length} grupos · ${animais.length} animais · ${eventos.length} eventos</div></div>
-    <button class="btn btn-sec" onclick="telaInstalar()">📲 ${appInstalado()?"App instalado · compartilhar link":"Instalar o app no celular"}</button>
-    <div class="sechead"><h2 style="font-size:16px">Cadastros</h2></div>
-    <button class="btn btn-sec" onclick="gerenciarMarcas()">🏷 Marcas / donos (${marcas.length})</button>
-    <button class="btn btn-sec" onclick="formNovaPropriedade()">🏡 Nova propriedade</button>
-    <div class="sechead" style="margin-top:18px"><h2 style="font-size:16px">Nuvem e backup</h2></div>
+    <div class="pf-resumo">${propriedades.length} propriedade(s) · ${lotes.length} lote(s) · ${ativos.length} animal(is) ativo(s)</div>
+
+    ${secao("casa","Propriedades",propriedades.length)}
+    ${propriedades.map(itemProp).join("")||`<div class="meta pf-vazio">Nenhuma propriedade cadastrada.</div>`}
+    <button class="btn btn-sec" onclick="formPropriedade()">+ Nova propriedade</button>
+
+    ${secao("ferro","Marcas / donos",marcas.length)}
+    ${marcas.map(itemMarca).join("")||`<div class="meta pf-vazio">Nenhuma marca cadastrada. A marca identifica o dono de cada animal.</div>`}
+    <button class="btn btn-sec" onclick="formMarca()">+ Nova marca / dono</button>
+
+    ${secao("nuvem","Conta e nuvem")}
     <div id="cloudAccountBox"><div class="cloud-card"><div class="meta">Verificando sua conta…</div></div></div>
-    <div class="sechead" style="margin-top:18px"><h2 style="font-size:16px">Backup manual</h2></div>
-    <div class="card" style="border-left:4px solid var(--verde)">
-      <b>⚠ Faça backup com frequência.</b>
-      <div class="meta" style="margin-top:4px">Use o arquivo .json como cópia extra de segurança ou para transferência manual.</div>
-      <div class="meta" style="margin-top:6px">${cfg.ultimoBackup?`Último backup: há ${_dias} dia(s).`:"Nenhum backup salvo ainda."}</div></div>
-    <button class="btn btn-sec" onclick="exportar()">⬇ Baixar backup (.json)</button>
-    <label style="display:block;font-size:13px;color:var(--muted);margin:4px 4px 5px;font-weight:600">Lembrar de fazer backup a cada</label>
-    <select onchange="salvarFreq(this.value)" style="margin-bottom:12px">
-      <option value="3" ${_freq===3?"selected":""}>3 dias</option>
-      <option value="7" ${_freq===7?"selected":""}>7 dias</option>
-      <option value="15" ${_freq===15?"selected":""}>15 dias</option>
-      <option value="30" ${_freq===30?"selected":""}>30 dias</option></select>
-    <label class="btn btn-sec" style="text-align:center;cursor:pointer">⬆ Importar backup
-      <input type="file" accept="application/json" onchange="importar(this)" style="display:none"></label>`;
+
+    ${secao("doc","Cópia em arquivo")}
+    <div class="card">
+      <div class="meta">Cópia extra de segurança (.json) para guardar fora do app ou levar para outro aparelho.</div>
+      <div class="meta" style="margin-top:6px"><b>${cfg.ultimoBackup?`Última cópia: há ${_dias} dia(s).`:"Nenhuma cópia em arquivo salva ainda."}</b></div>
+      <div class="lado" style="margin-top:12px">
+        <button class="btn btn-sec" onclick="exportar()">⬇ Baixar cópia</button>
+        <button class="btn btn-sec" onclick="document.getElementById('pf_importar').click()">⬆ Importar cópia</button>
+      </div>
+      <input type="file" id="pf_importar" accept="application/json" onchange="importar(this)" style="display:none">
+      <label>Lembrar de fazer a cópia a cada</label>
+      <select onchange="salvarFreq(this.value)">
+        <option value="3" ${_freq===3?"selected":""}>3 dias</option>
+        <option value="7" ${_freq===7?"selected":""}>7 dias</option>
+        <option value="15" ${_freq===15?"selected":""}>15 dias</option>
+        <option value="30" ${_freq===30?"selected":""}>30 dias</option></select>
+    </div>
+
+    ${secao("engr","Aplicativo")}
+    <div class="card pf-lista">
+      <div class="sheet-item rt" onclick="telaInstalar()"><span class="si" data-ico="celular"></span>${appInstalado()?"App instalado · compartilhar link":"Instalar o app no celular"}<span class="pf-chev">›</span></div>
+      <div class="sheet-item rt" onclick="gerenciarDadosV116()"><span class="si" data-ico="engr"></span>Gerenciar dados e reiniciar<span class="pf-chev">›</span></div>
+      <div class="sheet-item rt" onclick="sobreApp()"><span class="si" data-ico="info"></span>Sobre o app<span class="pf-chev">›</span></div>
+    </div>
+    <div class="pf-versao">${window.APP_VERSAO?`Versão ${esc(window.APP_VERSAO)}`:""}</div>`;
   renderContaNuvem();
 }
 
@@ -71,24 +113,71 @@ async function renderContaNuvem(){
   let ultimo="";
   try{
     const b=await buscarBackupCloud(false);
-    if(b&&b.updated_at)ultimo=`Último backup na nuvem: ${new Date(b.updated_at).toLocaleString('pt-BR')}`;
+    if(b&&b.updated_at)ultimo=`Última cópia de segurança na nuvem: ${new Date(b.updated_at).toLocaleString('pt-BR')}`;
   }catch(e){}
   box.innerHTML=`<div class="cloud-card">
-    <div class="row"><div style="min-width:0"><div class="ti">☁️ Conta conectada</div>
+    <div class="row"><div style="min-width:0"><div class="ti">Conta conectada</div>
       <div class="meta" style="overflow-wrap:anywhere">${esc(user.email||"Usuário")}</div></div>
       <span class="cloud-status on">Conectado</span></div>
     ${ultimo?`<div class="meta" style="margin-top:8px">${esc(ultimo)}</div>`:""}
     <div id="syncStatusBox" style="margin-top:10px"></div>
     <button class="btn" style="margin-top:10px" onclick="sincronizarAgora()">↻ Sincronizar agora</button>
     <div class="cloud-grid">
-      <button class="btn btn-sec" onclick="salvarBackupCloud()">☁️ Backup na nuvem</button>
-      <button class="btn btn-sec" onclick="restaurarBackupCloud()">↥ Restaurar backup</button>
+      <button class="btn btn-sec" onclick="salvarBackupCloud()">☁️ Criar cópia de segurança</button>
+      <button class="btn btn-sec btn-recuperar" onclick="restaurarBackupCloud()">↥ Recuperar cópia anterior</button>
+      <div class="nota-recuperar">⚠️ <strong>A recuperação substitui os dados deste aparelho.</strong></div>
     </div>
+    <div class="cloud-note">A sincronização mantém os dados iguais entre aparelhos. A cópia de segurança é uma proteção a mais para recuperar dados.</div>
     <button class="btn btn-perigo" style="margin-top:14px;margin-bottom:0" onclick="confirmarLogout()">Sair da conta</button>
-    <div class="cloud-note">A sincronização mantém seus dados atualizados entre aparelhos. A cópia de segurança serve como uma proteção adicional para recuperação.</div>
   </div>`;
   atualizarStatusSyncUI();
 }
+
+/* ---------- Propriedades e marcas (cadastros do Perfil) ---------- */
+async function formPropriedade(id){
+  const pr=id?await get("propriedades",id):null;
+  abrir(`<h2>${pr?"Editar propriedade":"Nova propriedade"}</h2>
+    <label>Nome *</label><input id="p_nome" value="${esc(pr?pr.nome:"")}" placeholder="Ex: Fazenda Garrafão">
+    <label>Localização</label><input id="p_local" value="${esc(pr&&pr.local||"")}" placeholder="Ex: Garrafão - Campos RJ">
+    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
+      <button class="btn" onclick="salvarPropriedade(${pr?`'${pr.id}'`:""})">Salvar</button></div>
+    ${pr?`<button class="btn-fant" style="margin-top:8px;color:var(--perigo)" onclick="apagarPropriedade('${pr.id}')">Apagar propriedade</button>`:""}`);
+}
+async function salvarPropriedade(id){
+  const n=val("p_nome");if(!n)return alert("Dê um nome.");
+  const pr=id?await get("propriedades",id):{id:uid(),criadoEm:Date.now()};
+  pr.nome=n;pr.local=val("p_local");
+  await put("propriedades",pr);fechar();recarregarTelaAtual();
+}
+async function apagarPropriedade(id){
+  const ls=(await getAll("lotes")).filter(l=>l.propriedadeId===id);
+  if(ls.length)return alert("Apague ou mude de propriedade os lotes desta propriedade antes.");
+  if(!confirm("Apagar esta propriedade?"))return;
+  await del("propriedades",id);fechar();abrirPerfil();
+}
+async function formMarca(id){
+  if(!(await podeUsarApp("Gerenciar marcas / donos")))return;
+  const m=id?await get("marcas",id):null;
+  abrir(`<h2>${m?"Editar marca / dono":"Nova marca / dono"}</h2>
+    <label>Sigla da marca *</label><input id="m_sig" value="${esc(m?m.sigla:"")}" placeholder="Ex: SJ">
+    <label>Nome do dono</label><input id="m_nome" value="${esc(m&&m.nome||"")}" placeholder="Ex: Saulo Jardim">
+    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
+      <button class="btn" onclick="salvarMarca(${m?`'${m.id}'`:""})">Salvar</button></div>
+    ${m?`<button class="btn-fant" style="margin-top:8px;color:var(--perigo)" onclick="apagarMarca('${m.id}')">Apagar marca</button>`:""}`);
+}
+async function salvarMarca(id){
+  const s=val("m_sig");if(!s)return alert("Informe a sigla.");
+  const m=id?await get("marcas",id):{id:uid()};
+  m.sigla=s;m.nome=val("m_nome");
+  await put("marcas",m);fechar();recarregarTelaAtual();
+}
+async function apagarMarca(id){
+  const usam=(await getAll("animais")).filter(a=>a.marcaId===id).length;
+  if(usam)return alert(`${usam} animal(is) usam esta marca. Troque a marca deles antes de apagar.`);
+  if(!confirm("Apagar esta marca?"))return;
+  await del("marcas",id);fechar();recarregarTelaAtual();
+}
+
 function formLoginCloud(){
   abrir(`<h2>Conta do Rebanho</h2>
     <div class="meta">Escolha como deseja continuar.</div>
@@ -772,19 +861,5 @@ async function salvarPerfil(){
       fechar();telaPerfil();return;
     }
   }
-  fechar();telaPerfil();
+  fechar();atualizarAvatarTopo();telaPerfil();
 }
-async function gerenciarMarcas(){
-  if(!(await podeUsarApp("Gerenciar marcas / donos")))return;
-  const marcas=await getAll("marcas");
-  let lst=marcas.map(m=>`<div class="sheet-item"><span class="si">🏷</span>
-    <div style="flex:1"><b>${esc(m.sigla)}</b> ${m.nome?`· ${esc(m.nome)}`:""}</div>
-    <button class="btn-fant" style="padding:4px;color:var(--perigo)" onclick="del('marcas','${m.id}').then(gerenciarMarcas)">✕</button></div>`).join("")||`<div class="meta">Nenhuma marca ainda.</div>`;
-  abrir(`<h2>Marcas / donos</h2>${lst}
-    <label>Nova marca — sigla *</label><input id="m_sig" placeholder="Ex: SJ">
-    <label>Nome do dono (opcional)</label><input id="m_nome" placeholder="Ex: Sítio São João">
-    <div class="lado" style="margin-top:16px"><button class="btn btn-sec" onclick="fechar()">Fechar</button>
-      <button class="btn" onclick="salvarMarca()">Adicionar</button></div>`);
-}
-async function salvarMarca(){const s=val("m_sig");if(!s)return alert("Informe a sigla.");
-  await put("marcas",{id:uid(),sigla:s,nome:val("m_nome")});gerenciarMarcas();}

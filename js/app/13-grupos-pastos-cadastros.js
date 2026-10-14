@@ -191,7 +191,7 @@ async function formNovoAnimal(loteFixo,nascimento){
     fechar();
     abrir(`<h2>🏷 Cadastre uma marca / dono primeiro</h2>
       <div class="meta" style="margin:8px 0 16px">Antes de ${nascimento?"registrar um nascimento":"cadastrar um animal"}, é necessário identificar o proprietário do animal.</div>
-      <button class="btn" onclick="fechar();gerenciarMarcas()">+ Cadastrar marca / dono</button>
+      <button class="btn" onclick="fechar();formMarca()">+ Cadastrar marca / dono</button>
       <button class="btn btn-sec" onclick="fechar()">Cancelar</button>`);
     return;
   }

@@ -25,12 +25,7 @@
       a.innerHTML=`<button class="btn btn-sec" style="margin:0;padding:8px 10px;font-size:13px" onclick="editarOperacaoV116('${pc.id}')">✎ Editar operação</button>`;
       card.appendChild(a);
     });
-    const titulo=[...$t.querySelectorAll('h2')].find(x=>/Histórico contábil/i.test(x.textContent||''));
-    if(titulo&&!document.getElementById('btn-gerenciar-v116')){
-      const b=document.createElement('button');b.id='btn-gerenciar-v116';b.className='btn btn-sec';b.style.cssText='margin:0 0 14px';b.innerHTML='⚙️ Gerenciar dados e reiniciar';b.onclick=gerenciarDadosV116;
-      const meta=titulo.closest('.sechead')?.nextElementSibling;
-      (meta||titulo.parentElement).insertAdjacentElement('afterend',b);
-    }
+    // "Gerenciar dados e reiniciar" fica no Perfil › Aplicativo (V163).
   }
 
   const hist0=window.finHistoricoContabil;

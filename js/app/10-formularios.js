@@ -23,17 +23,6 @@ function abrir(h){$md.innerHTML=h;$ov.classList.add("on");$md.scrollTop=0;travar
 function fechar(){$ov.classList.remove("on");soltarFundo();}
 $ov.onclick=e=>{if(e.target===$ov)fechar();};
 
-async function menuAdicionar(){if(!(await podeUsarApp("Adicionar dados")))return;abrir(`<h2>Adicionar</h2>
-  <div class="sheet-item rt" onclick="fechar();formNovoAnimal()"><span class="si">🐄</span>Novo animal</div>
-  <div class="sheet-item rt" onclick="fechar();formNovoAnimal(null,true)"><span class="si">🍼</span>Registrar nascimento</div>
-  <div class="sheet-item rt" onclick="fechar();formSaida()"><span class="si">↩</span>Saída de animal (morte/venda)</div>
-  <div class="sheet-item rt" onclick="fechar();formNovoAviso()"><span class="si">🔔</span>Cadastrar aviso</div>
-  <div class="sheet-item rt" onclick="fechar();gerenciarMarcas()"><span class="si">🏷</span>Marcas / donos</div>
-  <div class="sheet-item rt" onclick="fechar();formNovoLote()"><span class="si">▤</span>Novo lote</div>
-  <div class="sheet-item rt" onclick="fechar();formNovoGrupo()"><span class="si">👥</span>Novo grupo de animais</div>
-  <div class="sheet-item rt" onclick="fechar();formNovoPasto()"><span class="si">🌱</span>Novo pasto</div>
-  <div class="sheet-item rt" onclick="fechar();formNovaPropriedade()"><span class="si">🏡</span>Nova propriedade</div>
-  <button class="btn btn-sec" style="margin-top:14px" onclick="fechar()">Cancelar</button>`);}
 async function menuConfig(){
   const user=await authUser();
   if(!user){
@@ -48,11 +37,17 @@ async function menuConfig(){
     <div class="sheet-item rt" onclick="fechar();irAba('inicio')"><span class="si">⌂</span>Início</div>
     <div class="sheet-item rt" onclick="fechar();abrirOperacional()"><span class="si">🐄</span>Gestão operacional</div>
     <div class="sheet-item rt" onclick="menuFinanceiro()"><span class="si">💰</span>Gestão financeira</div>
-    <div class="sheet-item rt" onclick="fechar();irAba('perfil')"><span class="si">💾</span>Backup e Perfil</div>
+    <div class="sheet-item rt" onclick="fechar();irAba('analise')"><span class="si" data-ico="grafico"></span>Análise zootécnica</div>
+    <div class="sheet-item rt" onclick="fechar();abrirPerfil()"><span class="si" data-ico="pessoa"></span>Meu perfil, propriedades e marcas</div>
     <div class="sheet-item rt" onclick="telaInstalar()"><span class="si">📲</span>Instalar o app</div>
-      <div class="sheet-item rt" onclick="sobreApp()"><span class="si">ℹ️</span>Sobre o app</div>
+    <div class="sheet-item rt" onclick="sobreApp()"><span class="si">ℹ️</span>Sobre o app</div>
     <button class="btn btn-sec" style="margin-top:14px" onclick="fechar()">Fechar</button>`);
 }
+function sobreApp(){abrir(`<h2>Gestão do Rebanho</h2>
+  <div class="meta">Controle de rebanho por lote e grupos — vacinação, manejo, nascimentos, saídas e histórico por animal.</div>
+  <div class="meta" style="margin-top:8px">Funciona offline. Os dados ficam guardados neste aparelho — lembre de fazer a cópia de segurança em Perfil (foto no canto de cima).</div>
+  <button class="btn" style="margin-top:16px" onclick="fechar()">Fechar</button>`);}
+
 
 async function menuFinanceiro(){
   if(!(await podeUsarApp("Acessar gestão financeira")))return;
