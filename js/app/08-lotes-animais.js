@@ -317,6 +317,7 @@ async function verAnimal(id){
     <div class="animal-actions">
       <button class="btn btn-sec" onclick="formEditarAnimal('${id}')">✎ Editar dados</button>
       <button class="btn btn-sec" onclick="gerenciarGruposAnimal('${id}')">👥 Grupos (${gruposAnimal.length})</button>
+      <button class="btn btn-sec btn-ico" onclick="analiseAnimal('${id}')">${ico("grafico")} Análise do animal (GMD e margem)</button>
       ${a.status==="Ativo"?`<div class="lado"><button class="btn" onclick="formMedicarAnimal('${id}')">💊 Medicar</button>
         <button class="btn btn-sec" onclick="formMover('${id}')">↷ Mover lote</button></div>
       <button class="btn btn-sec" onclick="formEvento('${id}')">+ Registrar evento de manejo</button>

@@ -18,6 +18,8 @@ const diasEntreDatas=(ini,fim)=>{if(!ini||!fim)return null;return Math.round((ne
 function numeroBR(txt){let s=String(txt||"").trim().replace(/\s/g,"");if(!s)return null;
   if(s.includes(",")&&s.includes("."))s=s.replace(/\./g,"").replace(",",".");else if(s.includes(","))s=s.replace(",",".");
   else if(/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,"");const n=Number(s);return isFinite(n)?n:null;}
+// Dias também em meses (mês médio de 30,4 dias).
+const diasEMeses=d=>d==null?"—":`${d} dias (≈ ${kgFmt(d/30.4)} ${d/30.4>=1.95?"meses":"mês"})`;
 const kgFmt=(n,d=1)=>n==null||!isFinite(n)?"—":Number(n).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
 
 function ultimaPesagem(animalId,eventos){
@@ -84,10 +86,11 @@ async function telaAnaliseIndividual(){
   const comGmd=sel.filter(l=>l.d.gmd!=null),comMargem=sel.filter(l=>l.d.margem!=null);
   const gmdMedio=comGmd.length?comGmd.reduce((s,l)=>s+l.d.gmd,0)/comGmd.length:null;
   const margemTotal=comMargem.reduce((s,l)=>s+l.d.margem,0);
-  const aba=(k,t)=>`<button class="${_anFiltro===k?"on":""}" onclick="_anFiltro='${k}';telaAnaliseIndividual()">${t} (${(grupos[k]||[]).length})</button>`;
+  const aba=(k,t)=>`<button class="${_anFiltro===k?"on":""}" onclick="_anFiltro='${k}';telaAnaliseIndividual()">${t}<small>(${(grupos[k]||[]).length})</small></button>`;
   const stCls={Ativo:"chip-lote",Vendido:"chip-off",Morto:"chip-off"};
   const item=({a,d})=>`<div class="card rt an-item" data-b="${esc(((a.brinco||"")+" "+(a.nome||"")+" "+codAnimal(a)).toLowerCase())}" onclick="analiseAnimal('${a.id}')">
-      <div class="an-item-cab"><div class="ti">${esc(rotulo(a))}${a.brinco&&a.nome?` · ${esc(a.nome)}`:""}</div>
+      <div class="an-item-cab">${animalThumb(a,46)}<div class="ti" style="flex:1;min-width:0">${esc(rotulo(a))}${a.brinco&&a.nome?` · ${esc(a.nome)}`:""}
+        <div class="meta">${d.dias!=null?diasEMeses(d.dias):(d.nascido?"Nascido na propriedade":"Comprado")}</div></div>
         <span class="chip ${stCls[d.status]||""}">${esc(d.status)}</span></div>
       <div class="an-nums">
         <div><span>GMD</span><b>${d.gmd!=null?kgFmt(d.gmd,3)+" kg/dia":"—"}</b></div>
@@ -118,9 +121,10 @@ async function analiseAnimal(id){
   const inicio=d.inicioPorPesagem?"Primeira pesagem":(d.nascido?"Nascimento":"Compra");
   const fimRot=d.status==="Vendido"?"Venda":(d.status==="Morto"?"Última pesagem (antes da morte)":"Última pesagem");
   $t.innerHTML=`<button class="voltar" onclick="telaAnaliseIndividual()">‹ Análise individual</button>
-    <div class="card"><div class="an-item-cab"><div class="ti" style="font-size:20px">${esc(rotulo(a))}${a.brinco&&a.nome?` · ${esc(a.nome)}`:""}</div>
+    <div class="card"><div class="an-item-cab">${animalThumb(a,56)}<div style="flex:1;min-width:0"><div class="ti" style="font-size:20px">${esc(rotulo(a))}${a.brinco&&a.nome?` · ${esc(a.nome)}`:""}</div>
+        <div class="meta">${d.nascido?"Nascido na propriedade":"Comprado"}${d.status==="Morto"&&d.dataSaida?` · morte em ${fmt(d.dataSaida)}`:""}</div></div>
       <span class="chip ${d.status==="Ativo"?"chip-lote":"chip-off"}">${esc(d.status)}</span></div>
-      <div class="meta">${d.nascido?"Nascido na propriedade":"Comprado"}${d.status==="Morto"&&d.dataSaida?` · morte em ${fmt(d.dataSaida)}`:""}</div></div>
+      <button class="btn btn-sec btn-ico" style="margin:12px 0 0" onclick="verAnimal('${a.id}')">${ico("boi")} Ir para a página do animal</button></div>
     <div class="an-destaques">
       <div><span>GMD</span><b>${d.gmd!=null?kgFmt(d.gmd,3):"—"}</b><small>kg/dia</small></div>
       <div><span>Peso ganho</span><b>${d.ganhoKg!=null?kgFmt(d.ganhoKg):"—"}</b><small>kg</small></div>
@@ -130,7 +134,7 @@ async function analiseAnimal(id){
       <div class="h3" style="margin-top:0">Desempenho</div>
       ${linha(`Data — ${inicio.toLowerCase()}`,d.dataIni?fmt(d.dataIni):"—")}
       ${linha(`Data — ${fimRot.toLowerCase()}`,d.dataFim?fmt(d.dataFim):"—")}
-      ${linha("Dias no período",d.dias!=null?d.dias:"—")}
+      ${linha("Período",diasEMeses(d.dias))}
       ${linha(`Peso — ${inicio.toLowerCase()}`,d.pesoIni!=null?kgFmt(d.pesoIni)+" kg":"—")}
       ${linha(`Peso — ${fimRot.toLowerCase()}`,d.pesoFim!=null?kgFmt(d.pesoFim)+" kg":"—")}
       ${linha("Peso total ganho",d.ganhoKg!=null?kgFmt(d.ganhoKg)+" kg":"—")}
@@ -146,7 +150,7 @@ async function analiseAnimal(id){
       <div class="lado"><div style="flex:1"><label>Peso (kg)</label><input id="an_peso" inputmode="decimal" placeholder="Ex: 320"></div>
         <div style="flex:1"><label>Data</label><input id="an_data" type="date" value="${hoje()}" max="${hoje()}"></div></div>
       <button class="btn" style="margin-top:14px" onclick="salvarPesagemAnalise('${a.id}')">Salvar pesagem</button></div>`:""}
-    <button class="btn btn-sec" onclick="verAnimal('${a.id}')">Ver ficha do animal</button>`;
+`;
 }
 async function salvarPesagemAnalise(id){
   const kg=numeroBR(val("an_peso"));

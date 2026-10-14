@@ -55,7 +55,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 14-manejo-medicamentos.js | Manejo, aplicação de medicamento integrada ao estoque, troca de lote |
 | 15-backup.js | Backup manual em arquivo |
 | 16-navegacao.js | Histórico de telas: o "‹ Voltar" volta à tela anterior com filtros, busca e rolagem; `recarregarTelaAtual()` redesenha a tela aberta depois de salvar |
-| 17-analise-zootecnica.js | Aba Análise: página inicial e análise individual (dias, peso ganho, GMD, margem de contribuição) e registro de pesagem com peso em kg |
+| 17-analise-zootecnica.js | Aba Análise: página inicial e análise individual (dias e meses, peso ganho, GMD, margem de contribuição), registro de pesagem com peso em kg; ligada à página do animal nos dois sentidos |
 | 99-iniciar.js | Inicialização e registro do service worker |
 
 ## Módulos — `js/modulos/`
