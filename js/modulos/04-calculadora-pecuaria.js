@@ -4,49 +4,7 @@
    - Ponto de equilíbrio da recria/engorda (V158): dias ou GMD para o boi gordo valer o que custou o bezerro.
    - Macho ou fêmea: qual comprar? (V159): compara os dois até o mesmo peso de venda. */
 (()=>{
-  const css=document.createElement('style');
-  css.textContent=`
-    .calc-func-card{background:var(--verde-lite);border-radius:18px;padding:18px;cursor:pointer;position:relative;margin-bottom:14px;min-height:128px}
-    .calc-func-card:active{background:var(--verde-lite2)}
-    .calc-func-card .cfc-ico{width:50px;height:50px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:25px;box-shadow:var(--sombra);margin-bottom:12px}
-    .calc-func-card .cfc-t{font-size:18px;font-weight:800;color:var(--verde-esc);padding-right:28px}
-    .calc-func-card .cfc-d{font-size:13.5px;color:var(--muted);margin-top:5px;line-height:1.4;padding-right:18px}
-    .calc-func-card .cfc-seta{position:absolute;right:18px;top:22px;color:var(--verde);font-size:24px}
-    .calc-campos{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .calc-campos .full{grid-column:1/-1}
-    .calc-resultados{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
-    .calc-res{background:#fff;border:1px solid var(--linha);border-radius:14px;padding:13px}
-    .calc-res.full{grid-column:1/-1}
-    .calc-res .lbl{font-size:12px;color:var(--muted)}
-    .calc-res .val{font-size:20px;font-weight:800;color:var(--verde-esc);margin-top:3px}
-    .calc-res .sub{font-size:11.5px;color:var(--muted);margin-top:3px}
-    .calc-formula{margin-top:14px;padding:12px 14px;border-radius:13px;background:var(--verde-lite);color:var(--muted);font-size:12px;line-height:1.55}
-    .eq-opcs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
-    .eq-opc{display:block;margin:0;background:#fff;border:1.5px solid var(--linha);border-radius:14px;padding:13px;cursor:pointer;color:var(--texto,#1d2b21)}
-    .eq-opc input{display:none}
-    .eq-opc .eo-t{font-size:15px;font-weight:800;color:var(--verde-esc)}
-    .eq-opc .eo-d{font-size:12px;color:var(--muted);font-weight:500;margin-top:3px;line-height:1.35}
-    .eq-opc:has(input:checked){border-color:var(--verde);background:var(--verde-lite)}
-    .eq-sub{font-size:13px;font-weight:800;color:var(--verde-esc);margin:18px 0 0}
-    .eq-aviso{margin-top:14px;padding:12px 14px;border-radius:13px;background:#FFF6E0;color:#7a5a00;font-size:13px;line-height:1.45}
-    .mf-grade{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,1fr);gap:8px 8px;align-items:center}
-    .mf-grade .mf-cab{font-size:13px;font-weight:800;color:var(--verde-esc);text-align:center}
-    .mf-grade .mf-rot{font-size:12.5px;color:var(--muted);font-weight:600;line-height:1.25}
-    .mf-grade input{margin:0;padding:10px 8px;text-align:center;min-width:0;width:100%}
-    .mf-grade .mf-fixo{font-size:12px;color:var(--muted);text-align:center;line-height:1.25}
-    .mf-tab{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
-    .mf-tab th{font-size:12.5px;color:var(--verde-esc);text-align:right;padding:6px 4px;border-bottom:1px solid var(--linha)}
-    .mf-tab th:first-child,.mf-tab td:first-child{text-align:left;color:var(--muted);font-weight:600}
-    .mf-tab td{padding:7px 4px;text-align:right;border-bottom:1px solid var(--linha);white-space:nowrap}
-    .mf-tab tr.dest td{font-weight:800;color:var(--verde-esc)}
-    .mf-tab td.neg,.mf-tab tr.dest td.neg{color:var(--perigo)}
-    .mf-venc{margin-top:14px;padding:14px;border-radius:14px;background:var(--verde);color:#fff}
-    .mf-venc .mv-t{font-size:12px;opacity:.9}
-    .mf-venc .mv-v{font-size:22px;font-weight:800;margin-top:2px}
-    .mf-venc .mv-d{font-size:12.5px;opacity:.95;margin-top:4px;line-height:1.4}
-    @media(max-width:390px){.calc-campos{grid-template-columns:1fr}.calc-campos .full{grid-column:auto}.calc-resultados{grid-template-columns:1fr}}
-  `;
-  document.head.appendChild(css);
+  // Visual da calculadora: css/estilo.css (seção "Calculadora da Pecuária").
 
   // V105+: os módulos "Venda/Morte" e "Calculadora" agora ficam direto no
   // index.html, organizados em grupos. A injeção antiga foi desativada para

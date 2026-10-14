@@ -82,14 +82,6 @@ document.getElementById("tela").addEventListener("animationstart",e=>{
 });
 // Posição de rolagem a aplicar quando a próxima tela aparecer (usado pelo "Voltar" — ver 16-navegacao.js).
 let _rolarPara=0;
-/* Aba "Análise" do menu de baixo (V163): área de análise zootécnica, ainda em construção.
-   Quando ganhar conteúdo, passa para um arquivo próprio (js/app/17-analise-zootecnica.js). */
-function telaAnaliseZootecnica(){
-  topoPagina();
-  $t.innerHTML=`<div class="sechead"><span class="sic" data-ico="grafico"></span><h2>Análise zootécnica</h2></div>
-    <div class="vazio"><div class="big">📊</div><b>Em construção</b>
-      <div class="meta">Aqui ficarão as análises do rebanho: desempenho, ganho de peso, natalidade e indicadores zootécnicos.</div></div>`;
-}
 function irAba(a){aba=a;document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("ativo",x.dataset.aba===a));renderSeguro();}
 async function render(){
   topoPagina();
