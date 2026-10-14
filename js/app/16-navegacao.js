@@ -22,7 +22,7 @@ const TELAS_NAVEGACAO=[
   "telaManejo","telaMedicamentosManejo","telaTrocaLote","escolherModoTrocaV81","telaDestinoTrocaV81",
   "telaEstoque","telaCalculadoraPecuaria","telaCalculadoraNegociacao","telaCalculadoraEquilibrio","telaCalculadoraMachoFemea","telaVendaMorteAnimal",
   "menuFinanceiro","finResumo","finLancamentos","finRelatorios","finConfig","finHistoricoContabil",
-  "telaPerfil","telaAnaliseZootecnica","telaAnaliseIndividual","analiseAnimal","telaInstalar","telaBloqueada","telaPrimeirosPassos"
+  "telaPerfil","telaAnaliseZootecnica","telaAnaliseIndividual","analiseAnimal","telaAnalisePropriedade","telaInstalar","telaBloqueada","telaPrimeirosPassos"
 ];
 // Telas que são a mesma página (abas do Financeiro): trocar de aba não cria um passo novo.
 const GRUPO_NAVEGACAO={menuFinanceiro:"financeiro",finResumo:"financeiro",finLancamentos:"financeiro",finRelatorios:"financeiro",finConfig:"financeiro"};
@@ -39,7 +39,7 @@ const TITULOS_NAVEGACAO={
   telaCalculadoraPecuaria:"Calculadora da Pecuária",telaCalculadoraNegociacao:"Negociação",telaCalculadoraEquilibrio:"Ponto de equilíbrio",telaCalculadoraMachoFemea:"Macho ou fêmea",
   telaVendaMorteAnimal:"Venda / Morte",menuFinanceiro:"Financeiro",finResumo:"Financeiro",
   finLancamentos:"Lançamentos",finRelatorios:"Relatórios",finConfig:"Configurações",
-  finHistoricoContabil:"Livro Diário",telaPerfil:"Perfil",telaAnaliseZootecnica:"Análise",telaAnaliseIndividual:"Análise individual",analiseAnimal:"Análise do animal",telaInstalar:"Voltar"
+  finHistoricoContabil:"Livro Diário",telaPerfil:"Perfil",telaAnaliseZootecnica:"Análise",telaAnaliseIndividual:"Análise individual",analiseAnimal:"Análise do animal",telaAnalisePropriedade:"Análise por propriedade",telaInstalar:"Voltar"
 };
 const LIMITE_PILHA_NAVEGACAO=30;
 

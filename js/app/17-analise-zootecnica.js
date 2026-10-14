@@ -2,6 +2,8 @@
    Aba "Análise" do menu de baixo (V165): análises zootécnicas do rebanho.
    - Análise individual: para cada animal (ativo, vendido ou morto) calcula dias, peso inicial e final,
      peso ganho, GMD e margem de contribuição (valor de venda − valor de compra).
+   - Análise por propriedade (V171): lotação (UA/ha), @ produzidas por ha por ano, mortalidade e
+     prenhezes indesejadas (o dono compra só bezerras: todo parto na propriedade é prenhez indesejada).
    Script clássico: as funções e variáveis de nível superior são globais e compartilhadas
    com os demais arquivos. A ordem de carregamento está no index.html.
 
@@ -163,7 +165,10 @@ function telaAnaliseZootecnica(){
     <div class="meta" style="font-size:14px;margin:0 4px 16px">Escolha a análise que deseja ver.</div>
     <div class="calc-func-card" onclick="telaAnaliseIndividual()"><div class="cfc-ico">${ico("boi")}</div>
       <div class="cfc-t">Análise individual</div>
-      <div class="cfc-d">Animal por animal: dias, peso ganho, GMD e margem de contribuição (venda − compra).</div><div class="cfc-seta">›</div></div>`;
+      <div class="cfc-d">Animal por animal: dias, peso ganho, GMD e margem de contribuição (venda − compra).</div><div class="cfc-seta">›</div></div>
+    <div class="calc-func-card" onclick="telaAnalisePropriedade()"><div class="cfc-ico">${ico("casa")}</div>
+      <div class="cfc-t">Análise por propriedade</div>
+      <div class="cfc-d">Uso da área e sanidade: lotação (UA/ha), @ produzidas por ha por ano, mortalidade e prenhezes indesejadas.</div><div class="cfc-seta">›</div></div>`;
 }
 
 /* ---------- Análise individual: lista ---------- */
@@ -262,4 +267,106 @@ async function salvarPesagemAnalise(id){
   if(data>hoje())return alert("A data da pesagem não pode ser no futuro.");
   await registrarEvento(id,"Pesagem",data,`Peso: ${kgFmt(kg)} kg`,{pesoKg:kg});
   analiseAnimal(id);
+}
+
+/* ======================= ANÁLISE POR PROPRIEDADE (V171) =======================
+   Cada animal conta na propriedade do seu lote atual (ou do último lote, se já saiu).
+   - Área = soma da área (ha) dos pastos cadastrados na propriedade.
+   - Peso estimado numa data: entre dois pesos conhecidos (entrada, pesagens, venda) é proporcional ao
+     tempo; depois do último peso soma o GMD do próprio animal (ou o GMD médio do rebanho).
+   - Lotação = soma dos pesos estimados hoje ÷ 450 kg (1 UA) ÷ área.
+   - @ produzidas = peso ganho no período por todos os animais (enquanto estavam no rebanho) ÷ 30
+     (kg vivo para @ de carcaça com rendimento de 50%); por ha por ano = ÷ área ÷ anos do período.
+   - Mortalidade = mortes no período ÷ animais que estiveram no rebanho no período.
+   - Prenhezes indesejadas = partos na propriedade no período ÷ fêmeas que estiveram no rebanho
+     no período (sem contar as nascidas nele). */
+const UA_KG=450;
+let _prPeriodo="12m";
+function janelaPeriodo(k){
+  const h=hoje();
+  if(k==="12m"){const d=new Date(h+"T12:00:00");d.setFullYear(d.getFullYear()-1);return {ini:d.toISOString().slice(0,10),fim:h,rot:"últimos 12 meses"};}
+  const ano=String(k),fim=`${ano}-12-31`<h?`${ano}-12-31`:h;return {ini:`${ano}-01-01`,fim,rot:`ano ${ano}`};
+}
+// Peso estimado na data a partir dos pontos de peso (interpola; depois do último, soma o GMD).
+function pesoNaData(pts,data,gmdPadrao){
+  if(!pts.length)return null;
+  if(data<=pts[0].data)return pts[0].peso;
+  for(let i=1;i<pts.length;i++){
+    if(data<=pts[i].data){const a=pts[i-1],b=pts[i],t=diasEntreDatas(a.data,b.data);
+      return t>0?a.peso+(b.peso-a.peso)*diasEntreDatas(a.data,data)/t:b.peso;}
+  }
+  const u=pts[pts.length-1];
+  let g=gmdPadrao||0;
+  if(pts.length>=2){const t=diasEntreDatas(pts[0].data,u.data);if(t>0)g=(u.peso-pts[0].peso)/t;}
+  return u.peso+Math.max(0,g)*diasEntreDatas(u.data,data);
+}
+function indicadoresPropriedades(dados,jan){
+  const {animais,eventos,lotes,pastos,propriedades}=dados;
+  const des=new Map(animais.map(a=>[a.id,desempenhoAnimal(a,eventos)]));
+  const gmds=[...des.values()].map(d=>d.gmd).filter(g=>g!=null&&g>0);
+  const gmdRebanho=gmds.length?gmds.reduce((x,y)=>x+y,0)/gmds.length:0;
+  const propDoLote=id=>(lotes.find(l=>l.id===id)||{}).propriedadeId||null;
+  const saidaDe=a=>a.status!=="Ativo"&&a.saida?a.saida.data:null;
+  const entradaDe=a=>des.get(a.id).dataIni;
+  const linhas=[...propriedades.map(p=>({id:p.id,nome:p.nome})),{id:"__todas",nome:"Todas as propriedades"}];
+  return linhas.map(pr=>{
+    const todas=pr.id==="__todas";
+    const meus=animais.filter(a=>todas?true:propDoLote(a.loteAtualId)===pr.id);
+    const area=pastos.filter(pt=>todas?true:pt.propriedadeId===pr.id).reduce((s,pt)=>s+(Number(pt.areaHa)||0),0);
+    const ativos=meus.filter(a=>a.status==="Ativo");
+    // lotação hoje
+    let kgHoje=0,semPeso=0;
+    for(const a of ativos){const pts=pontosDePeso(a,eventos);const kg=pesoNaData(pts,hoje(),gmdRebanho);if(kg>0)kgHoje+=kg;else semPeso++;}
+    const ua=kgHoje/UA_KG;
+    // no período
+    let ganhoKg=0,noPeriodo=0,mortes=0,femeas=0,partos=0;
+    for(const a of meus){
+      const ent=entradaDe(a)||jan.ini,sai=saidaDe(a)||jan.fim;
+      const ini=ent>jan.ini?ent:jan.ini,fim=sai<jan.fim?sai:jan.fim;
+      if(fim<ini)continue;
+      noPeriodo++;
+      const pts=pontosDePeso(a,eventos);
+      if(pts.length){const p0=pesoNaData(pts,ini,gmdRebanho),p1=pesoNaData(pts,fim,gmdRebanho);if(p0!=null&&p1!=null&&p1>p0)ganhoKg+=p1-p0;}
+      if(a.status==="Morto"&&a.saida&&a.saida.data>=jan.ini&&a.saida.data<=jan.fim)mortes++;
+      const nascidoNoPeriodo=a.nascidoNaPropriedade===true&&a.dataNascimento&&a.dataNascimento>=jan.ini&&a.dataNascimento<=jan.fim;
+      if(nascidoNoPeriodo)partos++;
+      else if(a.sexo==="F")femeas++;
+    }
+    const anos=Math.max(diasEntreDatas(jan.ini,jan.fim),1)/365;
+    const arrobas=ganhoKg/30;
+    return {nome:pr.nome,todas,area,ativos:ativos.length,ua,lotacao:area>0?ua/area:null,semPeso,
+      arrobas,arrobasHaAno:area>0?arrobas/area/anos:null,noPeriodo,mortes,mortalidade:noPeriodo?mortes/noPeriodo:null,
+      femeas,partos,prenhez:femeas?partos/femeas:null};
+  });
+}
+async function telaAnalisePropriedade(){
+  topoPagina();
+  const [animais,eventos,lotes,pastos,propriedades]=await Promise.all(["animais","eventos","lotes","pastos","propriedades"].map(n=>getAll(n)));
+  const jan=janelaPeriodo(_prPeriodo);
+  const res=indicadoresPropriedades({animais,eventos,lotes,pastos,propriedades},jan);
+  const anoAtual=Number(hoje().slice(0,4));
+  const opts=[["12m","Últimos 12 meses"],...[0,1,2].map(i=>[String(anoAtual-i),`Ano ${anoAtual-i}`])];
+  const pct=v=>v==null?"—":`${kgFmt(v*100)}%`;
+  const card=r=>`<div class="card pr-card${r.todas?" pr-total":""}">
+      <div class="an-item-cab"><div class="ti" style="font-size:17px">${esc(r.nome)}</div><span class="chip chip-lote">${r.area>0?kgFmt(r.area)+" ha":"sem área"}</span></div>
+      <div class="pr-grade">
+        <div><span>Lotação hoje</span><b>${r.lotacao!=null?kgFmt(r.lotacao,2)+" UA/ha":"—"}</b><small>${kgFmt(r.ua)} UA · ${r.ativos} ativo(s)</small></div>
+        <div><span>@ produzidas</span><b>${r.arrobasHaAno!=null?kgFmt(r.arrobasHaAno)+" @/ha/ano":"—"}</b><small>${kgFmt(r.arrobas)} @ no período</small></div>
+        <div><span>Mortalidade</span><b class="${r.mortes?"neg":""}">${pct(r.mortalidade)}</b><small>${r.mortes} morte(s) · ${r.noPeriodo} no rebanho no período</small></div>
+        <div><span>Prenhezes indesejadas</span><b class="${r.partos?"neg":""}">${pct(r.prenhez)}</b><small>${r.partos} parto(s) · ${r.femeas} fêmea(s) no período</small></div>
+      </div>
+      ${r.area>0?"":`<div class="eq-aviso" style="margin-top:10px">Cadastre a área (ha) dos pastos desta propriedade para calcular lotação e @/ha.</div>`}
+      ${r.semPeso?`<div class="meta" style="margin-top:8px">Fora da lotação por não ter nenhum peso registrado: ${r.semPeso}.</div>`:""}
+    </div>`;
+  $t.innerHTML=`<button class="voltar" onclick="telaAnaliseZootecnica()">‹ Análise</button>
+    <div class="sechead"><span class="sic" data-ico="casa"></span><h2>Análise por propriedade</h2></div>
+    <label style="margin-top:0">Período</label>
+    <select id="pr_periodo" onchange="_prPeriodo=this.value;telaAnalisePropriedade()">${opts.map(([k,t])=>`<option value="${k}" ${_prPeriodo===k?"selected":""}>${t}</option>`).join("")}</select>
+    <div class="meta" style="margin:6px 4px 12px">${fmt(jan.ini)} a ${fmt(jan.fim)}</div>
+    ${res.filter(r=>!r.todas).map(card).join("")}
+    ${propriedades.length>1?card(res.find(r=>r.todas)):""}
+    <div class="calc-formula"><b>Como é calculado:</b> cada animal conta na propriedade do seu lote. Área = soma da área dos pastos.
+      <b>Lotação</b> = peso estimado de hoje ÷ 450 kg (1 UA) ÷ ha. <b>@ produzidas</b> = peso ganho no período ÷ 30 (carcaça com 50% de rendimento), por ha e por ano.
+      O peso de cada data é estimado entre a entrada, as pesagens e a venda; depois da última pesagem soma o GMD do animal (ou o médio do rebanho) — quanto mais pesagens, mais preciso.
+      <b>Mortalidade</b> = mortes ÷ animais que passaram pelo rebanho no período. <b>Prenhezes indesejadas</b> = partos na propriedade ÷ fêmeas no período (como só entram bezerras compradas, todo parto é prenhez ocorrida na propriedade).</div>`;
 }

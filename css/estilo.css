@@ -457,4 +457,17 @@
   .an-peso-cab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14.5px;}
   .an-peso-per{display:flex;justify-content:space-between;gap:8px;margin-top:4px;font-size:12.5px;color:var(--muted);}
   .an-peso-per b{color:var(--verde-esc);}
+  /* Foto no cadastro do item de estoque (V170) */
+  .in-foto-linha{display:flex;align-items:center;gap:12px;margin:4px 0 6px;}
+  .in-foto{width:64px;height:64px;border-radius:14px;background:var(--verde-lite);color:var(--verde);display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none;border:1.5px dashed var(--verde);}
+  .in-foto img{width:100%;height:100%;object-fit:cover;}
+  .in-foto svg.ico{width:26px;height:26px;}
+  /* Análise por propriedade (V171) */
+  .pr-grade{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;}
+  .pr-grade>div{border:1px solid var(--linha);border-radius:12px;padding:10px;}
+  .pr-grade span{display:block;font-size:11.5px;color:var(--muted);}
+  .pr-grade b{display:block;font-size:16px;font-weight:800;color:var(--verde-esc);margin-top:2px;}
+  .pr-grade small{display:block;font-size:11px;color:var(--muted);margin-top:2px;}
+  .pr-total{border:1.5px solid var(--verde);}
+  .pr-grade b.neg{color:var(--perigo);}
 
