@@ -84,8 +84,10 @@ async function histEstoque(insumos,movs){
   });
   return arr.length?verMais(arr,"movimento(s)"):`<div class="meta" style="padding:2px 4px 8px">Sem movimentos ainda.</div>`;
 }
+let _insumoFoto=""; // foto escolhida no formulário do item (V170), gravada ao salvar
 async function formNovoInsumo(grupo,editId,catPadrao){
   const ed=editId?await get("insumos",editId):null;
+  _insumoFoto=ed&&ed.foto||"";
   const g=ed?ed.grupo:(grupo||"gado");
   const cats=catsDoGrupo(g);
   const catAtual=ed?ed.categoria:(catPadrao&&cats.includes(catPadrao)?catPadrao:cats[0]);
@@ -95,6 +97,11 @@ async function formNovoInsumo(grupo,editId,catPadrao){
   const optUn=UNID_INSUMO.map(u=>`<option value="${u}" ${u===unAtual?"selected":""}>${u}</option>`).join("");
   const med=g==="gado"&&CAT_MED_ESTOQUE.includes(catAtual);
   abrir(`<h2>${ed?"Editar item":"Novo item de estoque"}</h2>
+    <div class="in-foto-linha">
+      <div class="in-foto rt" id="in_foto_prev" onclick="document.getElementById('in_foto_arq').click()">${_insumoFoto?`<img src="${esc(_insumoFoto)}" alt="">`:ico("camera")}</div>
+      <div><b>Foto do item</b><div class="meta">Toque para ${_insumoFoto?"trocar a":"tirar ou escolher uma"} foto (opcional).</div></div>
+      <input type="file" id="in_foto_arq" accept="image/*" style="display:none" onchange="escolherFotoNovoInsumo(this)">
+    </div>
     <label>Grupo</label><input value="${g==="manutencao"?"Manutenção da propriedade":"Insumos do gado"}" disabled>
     <input type="hidden" id="in_grupo" value="${g}">
     <label>Categoria</label><select id="in_cat" onchange="trocarCategoriaInsumo(${ed?"true":"false"})">${optCat}</select>
@@ -110,6 +117,8 @@ async function formNovoInsumo(grupo,editId,catPadrao){
     <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
       <button class="btn" onclick="salvarInsumo(${ed?`'${ed.id}'`:""})">Salvar</button></div>`);
 }
+function escolherFotoNovoInsumo(input){const f=input.files&&input.files[0];if(!f)return;
+  lerFotoRedimensionada(f,d=>{_insumoFoto=d;const el=document.getElementById("in_foto_prev");if(el)el.innerHTML=`<img src="${d}" alt="">`;});}
 function trocarCategoriaInsumo(editando){
   const g=val("in_grupo")||"gado",cat=val("in_cat");
   const [exemplo,unSug]=exemploInsumo(g,cat);
@@ -125,8 +134,9 @@ async function salvarInsumo(id){
   const grupo=val("in_grupo")||"gado", categoria=val("in_cat"), unidade=val("in_un");
   const med=grupo==="gado"&&CAT_MED_ESTOQUE.includes(categoria);
   const extra=med?{tipoMed:categoria==="Medicamento"?val("in_tipomed"):"",fabricante:val("in_fab"),marca:val("in_marca"),obs:val("in_obs")}:{};
-  if(id){const it=await get("insumos",id);if(it){it.nome=nome;it.categoria=categoria;it.unidade=unidade;Object.assign(it,extra);await put("insumos",it);}}
-  else await put("insumos",{id:uid(),nome,grupo,categoria,unidade,saldo:0,custoMedio:0,...extra,criadoEm:Date.now()});
+  if(id){const it=await get("insumos",id);if(it){it.nome=nome;it.categoria=categoria;it.unidade=unidade;it.foto=_insumoFoto||"";Object.assign(it,extra);await put("insumos",it);}}
+  else await put("insumos",{id:uid(),nome,grupo,categoria,unidade,saldo:0,custoMedio:0,foto:_insumoFoto||"",...extra,criadoEm:Date.now()});
+  _insumoFoto="";
   fechar();telaEstoque();
 }
 async function excluirInsumo(id){

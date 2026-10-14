@@ -168,7 +168,7 @@ async function telaNascimentosAntiga(){
     const linhaDesmama=`<div class="meta" style="margin-top:6px${atrasado?';color:#c0392b;font-weight:600':(a.desmamado?';color:var(--verde)':'')}">${desmamaLabel(a)}</div>`;
     // no modo edição, permite corrigir a data da desmama já registrada (ou desfazê-la)
     const ctrlDesmama=(_editNasc&&a.desmamado)?`<div style="margin-top:6px">
-        <button class="btn-fant" style="padding:2px 8px 2px 0;color:var(--verde);font-weight:600" onclick="event.stopPropagation();formDesmama('${a.id}')">✎ Corrigir data da desmama</button>
+        <button class="btn-fant" style="padding:2px 8px 2px 0;color:var(--verde);font-weight:600" onclick="event.stopPropagation();formDesmama('${a.id}')">✎ Editar desmama</button>
         <button class="btn-fant" style="padding:2px 6px;color:var(--perigo)" onclick="event.stopPropagation();desfazerDesmama('${a.id}')">Desfazer</button>
       </div>`:"";
     return `<div class="card rt" onclick="verAnimal('${a.id}')">
@@ -192,11 +192,12 @@ async function formDesmama(animalId){
     const a=animais.find(x=>x.id===animalId);if(!a){fechar();return;}
     const corrigindo=a.desmamado;
     const dataInicial=(corrigindo&&a.dataDesmama)?a.dataDesmama:hoje();
-    abrir(`<h2>${corrigindo?"Corrigir data da desmama":"Registrar desmama"}</h2>
+    abrir(`<h2>${corrigindo?"Editar desmama":"Registrar desmama"}</h2>
       <div class="meta" style="margin-bottom:10px"><b>${esc(rotuloCod(a))}</b>${a.dataNascimento?` · nasc. ${fmt(a.dataNascimento)}`:""}</div>
-      <label>Data da desmama</label><input id="dm_data" type="date" value="${dataInicial}">
+      <label>Data da desmama</label><input id="dm_data" type="date" value="${dataInicial}" max="${hoje()}">
       <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
-        <button class="btn" onclick="salvarDesmama('${animalId}')">Salvar</button></div>`);
+        <button class="btn" onclick="salvarDesmama('${animalId}')">Salvar</button></div>
+      ${corrigindo?`<button class="btn-fant" style="margin-top:6px;color:var(--muted);font-size:14px" onclick="desfazerDesmama('${animalId}')">Desfazer desmama (o bezerro volta a não desmamado)</button>`:""}`);
     return;
   }
   const naoDesmamados=animais.filter(a=>a.nascidoNaPropriedade===true&&!a.desmamado).sort((x,y)=>(x.codigo||0)-(y.codigo||0));
@@ -231,6 +232,7 @@ async function salvarDesmama(animalId){
 }
 async function desfazerDesmama(animalId){
   if(!confirm("Desfazer a desmama deste bezerro?"))return;
+  fechar();
   const a=await get("animais",animalId);if(!a)return;
   a.desmamado=false;a.dataDesmama="";
   await put("animais",a);

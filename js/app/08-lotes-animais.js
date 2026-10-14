@@ -334,8 +334,7 @@ function blocoDesmamaFicha(a){
   const d=desmamaInfo(a);
   const atras=!d.desmamado&&!d.semData&&d.diasRestantes<0;
   const botoes=a.desmamado
-    ?`<button class="btn-fant" style="padding:6px 10px 0 0;color:var(--verde);font-weight:600" onclick="formDesmama('${a.id}')">✎ Corrigir data da desmama</button>
-      <button class="btn-fant" style="padding:6px 10px 0 0;color:var(--perigo)" onclick="desfazerDesmama('${a.id}')">Desfazer desmama</button>`
+    ?`<button class="btn-fant" style="padding:6px 10px 0 0;color:var(--verde);font-weight:600" onclick="formDesmama('${a.id}')">✎ Editar desmama</button>`
     :(a.status==="Ativo"?`<button class="btn btn-sec" style="margin:10px 0 0" onclick="formDesmama('${a.id}')">🍼 Registrar desmama</button>`:"");
   return `<div class="card" style="cursor:default;border-left:4px solid ${atras?"#c0392b":"var(--verde)"}">
     <div class="meta">Desmama</div>
