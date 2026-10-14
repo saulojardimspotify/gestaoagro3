@@ -41,7 +41,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 |---|---|
 | 01-config-conta.js | Endereço e chave do Supabase, sessão (login), `sbFetch`, permissões de uso |
 | 02-banco-local.js | IndexedDB: `abrirDB`, `get`, `getAll`, `put`, `del` (com metadados de sincronização) |
-| 03-utilidades-constantes.js | Datas, moeda, rótulos de animal, raças, categorias, estoque/medicamentos, migração de medicamentos |
+| 03-utilidades-constantes.js | Datas, moeda, área em alqueire (`alqTxt`, `areaDoCampo`; banco segue em ha), rótulos de animal, raças, categorias, estoque/medicamentos, migração de medicamentos |
 | 04-interface-base.js | Ícones SVG (`ico`), menu inferior e `render()` das abas, tela de login |
 | 05-instalar-primeiros-passos.js | Tela "Instalar o app" e cadastro inicial obrigatório |
 | 06-inicio.js | Página inicial: pendências, atalhos, Rebanho hoje, Financeiro, nascidos |
@@ -55,7 +55,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 14-manejo-medicamentos.js | Manejo, aplicação de medicamento integrada ao estoque, troca de lote |
 | 15-backup.js | Backup manual em arquivo |
 | 16-navegacao.js | Histórico de telas: o "‹ Voltar" volta à tela anterior com filtros, busca e rolagem; `recarregarTelaAtual()` redesenha a tela aberta depois de salvar |
-| 17-analise-zootecnica.js | Aba Análise: página inicial e análise individual (dias e meses, peso ganho, GMD, margem de contribuição, custo direto por animal com detalhes, histórico de peso com GMD por período), análise por propriedade (lotação UA/ha, @/ha/ano, mortalidade, prenhezes indesejadas), registro de pesagem com peso em kg; ligada à página do animal nos dois sentidos |
+| 17-analise-zootecnica.js | Aba Análise: página inicial e análise individual (dias e meses, peso ganho, GMD, margem de contribuição, custo direto por animal com detalhes, histórico de peso com GMD por período), análise por propriedade (lotação em animais/alqueire com sinal de cor, UA/alq, @/alq/ano, mortalidade, prenhezes indesejadas), registro de pesagem com peso em kg; ligada à página do animal nos dois sentidos |
 | 99-iniciar.js | Inicialização e registro do service worker |
 
 ## Módulos — `js/modulos/`

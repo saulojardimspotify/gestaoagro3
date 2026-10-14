@@ -114,7 +114,7 @@ async function formNovoPasto(propFixa){
   abrir(`<h2>Novo pasto</h2>
     <label>Propriedade *</label><select id="pt_prop">${optProp}</select>
     <label>Nome do pasto *</label><input id="pt_nome" placeholder="Ex: Pasto 1">
-    <label>Área total (ha)</label><input id="pt_area" inputmode="decimal" placeholder="Ex: 12">
+    <label>Área total (alqueires)</label><input id="pt_area" inputmode="decimal" placeholder="Ex: 2,5">
     <label>Tipo de capim</label><input id="pt_capim" placeholder="Ex: Braquiária, Mombaça, Tifton…">
     <label>Situação</label>
     <select id="pt_status" onchange="togglePastoLote()">
@@ -133,7 +133,7 @@ function togglePastoLote(pref){
 async function salvarPasto(){
   const nome=val("pt_nome");if(!nome)return alert("Dê um nome ao pasto.");
   const status=val("pt_status");
-  await put("pastos",{id:uid(),propriedadeId:val("pt_prop"),nome,areaHa:numBR("pt_area"),
+  await put("pastos",{id:uid(),propriedadeId:val("pt_prop"),nome,areaHa:areaDoCampo("pt_area"),
     tipoCapim:val("pt_capim"),status,loteId:status==="Ocupado"?(val("pt_lote")||null):null,
     criadoEm:Date.now(),statusDesde:Date.now(),historico:[]});
   fechar();telaGestaoPasto();
@@ -148,7 +148,7 @@ async function formEditarPasto(id){
   abrir(`<h2>Editar pasto</h2>
     <label>Propriedade *</label><select id="pe_prop">${optProp}</select>
     <label>Nome do pasto *</label><input id="pe_nome" value="${esc(pt.nome||"")}">
-    <label>Área total (ha)</label><input id="pe_area" inputmode="decimal" value="${pt.areaHa??""}">
+    <label>Área total (alqueires)</label><input id="pe_area" inputmode="decimal" value="${alqCampo(pt.areaHa)}">
     <label>Tipo de capim</label><input id="pe_capim" value="${esc(pt.tipoCapim||"")}">
     <label>Situação</label>
     <select id="pe_status" onchange="togglePastoLote(true)">
@@ -171,7 +171,7 @@ async function salvarEdicaoPasto(id){
     pt.historico.push({status:pt.status||"Livre",inicio:pt.statusDesde,fim:Date.now(),loteId:pt.loteId||null});
     pt.statusDesde=Date.now();
   }
-  pt.propriedadeId=val("pe_prop");pt.nome=nome;pt.areaHa=numBR("pe_area");pt.tipoCapim=val("pe_capim");
+  pt.propriedadeId=val("pe_prop");pt.nome=nome;pt.areaHa=areaDoCampo("pe_area",pt.areaHa);pt.tipoCapim=val("pe_capim");
   pt.status=novoStatus;pt.loteId=novoLote;
   await put("pastos",pt);fechar();telaGestaoPasto();
 }

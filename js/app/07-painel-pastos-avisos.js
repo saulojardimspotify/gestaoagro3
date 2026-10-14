@@ -262,7 +262,7 @@ async function telaGestaoPasto(){
         <button class="btn-fant" style="padding:4px 8px;color:var(--perigo)" onclick="excluirPastoLista('${pt.id}')">✕</button></div>`:"";
     return `<div class="card">
       <div class="row"><div class="ti">${esc(pt.nome)}</div>${ctrl}</div>
-      <div class="meta">${[pt.areaHa!=null?pt.areaHa+" ha":"",pt.tipoCapim].filter(Boolean).map(esc).join(" · ")||"—"}</div>
+      <div class="meta">${[pt.areaHa!=null?alqTxt(pt.areaHa):"",pt.tipoCapim].filter(Boolean).map(esc).join(" · ")||"—"}</div>
       <div class="meta" style="margin-top:6px">${pastoStatusChip(pt)}${pt.status==="Ocupado"&&pt.loteId?`<span class="chip chip-lote">▦ ${esc(nomeLote(pt.loteId))} · ${n} 🐄</span>`:""}</div>
       ${diasLinha?`<div class="meta" style="margin-top:8px">${diasLinha}</div>`:""}
       <button class="btn-fant" style="padding:8px 0 0;color:var(--verde);font-weight:600" onclick="verPasto('${pt.id}')">📋 Ver histórico ›</button></div>`;
@@ -369,7 +369,7 @@ async function verPasto(id){
   });
   $t.innerHTML=`<button class="voltar" onclick="telaGestaoPasto()">‹ Gestão do Pasto</button>
     <div class="card"><div class="ti" style="font-size:19px">🌱 ${esc(pt.nome)}</div>
-      <div class="meta">${esc(nomeProp(pt.propriedadeId))}${[pt.areaHa!=null?" · "+pt.areaHa+" ha":"",pt.tipoCapim?" · "+esc(pt.tipoCapim):""].join("")}</div>
+      <div class="meta">${esc(nomeProp(pt.propriedadeId))}${[pt.areaHa!=null?" · "+alqTxt(pt.areaHa):"",pt.tipoCapim?" · "+esc(pt.tipoCapim):""].join("")}</div>
       <div class="meta" style="margin-top:8px">${pastoStatusChip(pt)}${pt.status==="Ocupado"&&pt.loteId?`<span class="chip chip-lote">▦ ${esc(nomeLote(pt.loteId))}</span>`:""}</div></div>
     <div class="grid">
       <div class="card" style="text-align:center"><div style="font-size:30px;font-weight:800;color:var(--verde)">${r.Descanso}</div><div class="meta">dia(s) reservado<br>(em descanso)</div></div>
@@ -613,7 +613,7 @@ async function verPropriedade(pid){
   let plst=meusPastos.length?"":`<div class="meta" style="padding:8px 4px">Nenhum pasto cadastrado.</div>`;
   for(const pt of meusPastos)plst+=`<div class="card rt" onclick="formEditarPasto('${pt.id}')">
     <div class="ti">${esc(pt.nome)}</div>
-    <div class="meta" style="margin-top:2px">${[pt.areaHa!=null?pt.areaHa+" ha":"",pt.tipoCapim].filter(Boolean).map(esc).join(" · ")||"—"}</div>
+    <div class="meta" style="margin-top:2px">${[pt.areaHa!=null?alqTxt(pt.areaHa):"",pt.tipoCapim].filter(Boolean).map(esc).join(" · ")||"—"}</div>
     <div class="meta" style="margin-top:6px">${pastoStatusChip(pt)}${pt.status==="Ocupado"&&pt.loteId?`<span class="chip chip-lote">▦ ${esc(nomeLote(pt.loteId))}</span>`:""}</div></div>`;
   $t.innerHTML=`<button class="voltar" onclick="irAba('painel')">‹ Gestão Operacional</button>
     <div class="card">

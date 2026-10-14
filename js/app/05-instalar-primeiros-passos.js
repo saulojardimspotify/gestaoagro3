@@ -131,7 +131,7 @@ async function telaPrimeirosPassos(pend){
     <div class="meta">A área onde o lote está. Depois dá para cadastrar os outros pastos em Gestão de Pastos.</div>
     ${props.length>1?`<label>Propriedade *</label><select id="onb_prop">${optProp}</select>`:`<input type="hidden" id="onb_prop" value="${props[0].id}">`}
     <label>Nome do pasto *</label><input id="onb_nome" placeholder="Ex: Pasto da Frente">
-    <div class="lado"><div><label>Área (ha)</label><input id="onb_area" inputmode="decimal" placeholder="Ex: 12"></div>
+    <div class="lado"><div><label>Área (alqueires)</label><input id="onb_area" inputmode="decimal" placeholder="Ex: 2,5"></div>
       <div><label>Capim</label><input id="onb_capim" placeholder="Ex: Braquiária"></div></div>
     <label>Situação</label><select id="onb_status">
       ${lotes.length?`<option value="Ocupado">Ocupado pelo lote</option>`:""}<option value="Livre">Livre</option><option value="Descanso">Em descanso</option></select>
@@ -162,7 +162,7 @@ async function salvarPassoInicial(k){
   }else if(k==="pasto"){
     if(!nome)return alert("Dê um nome ao pasto.");
     const status=val("onb_status")||"Livre";
-    await put("pastos",{id:uid(),propriedadeId:val("onb_prop"),nome,areaHa:numBR("onb_area"),tipoCapim:val("onb_capim"),
+    await put("pastos",{id:uid(),propriedadeId:val("onb_prop"),nome,areaHa:areaDoCampo("onb_area"),tipoCapim:val("onb_capim"),
       status,loteId:status==="Ocupado"?(val("onb_lote")||null):null,criadoEm:Date.now(),statusDesde:Date.now(),historico:[]});
   }
   const pend=await pendenciasIniciais();

@@ -274,9 +274,11 @@ async function salvarPesagemAnalise(id){
    - Área = soma da área (ha) dos pastos cadastrados na propriedade.
    - Peso estimado numa data: entre dois pesos conhecidos (entrada, pesagens, venda) é proporcional ao
      tempo; depois do último peso soma o GMD do próprio animal (ou o GMD médio do rebanho).
-   - Lotação = soma dos pesos estimados hoje ÷ 450 kg (1 UA) ÷ área.
+   - Área em alqueires (1 alq = 4,84 ha). Lotação = animais ativos ÷ alqueires, com sinal de cor
+     (até 6,5 verde · até 7,5 amarelo · até 10 vermelho · acima vermelho forte); em UA = peso
+     estimado hoje ÷ 450 kg ÷ alqueires (animal sem peso entra com o peso médio dos outros).
    - @ produzidas = peso ganho no período por todos os animais (enquanto estavam no rebanho) ÷ 30
-     (kg vivo para @ de carcaça com rendimento de 50%); por ha por ano = ÷ área ÷ anos do período.
+     (kg vivo para @ de carcaça com rendimento de 50%); por alqueire por ano = ÷ alqueires ÷ anos.
    - Mortalidade = mortes no período ÷ animais que estiveram no rebanho no período.
    - Prenhezes indesejadas = partos na propriedade no período ÷ fêmeas que estiveram no rebanho
      no período (sem contar as nascidas nele). */
@@ -315,9 +317,11 @@ function indicadoresPropriedades(dados,jan){
     const area=pastos.filter(pt=>todas?true:pt.propriedadeId===pr.id).reduce((s,pt)=>s+(Number(pt.areaHa)||0),0);
     const ativos=meus.filter(a=>a.status==="Ativo");
     // lotação hoje
-    let kgHoje=0,semPeso=0;
-    for(const a of ativos){const pts=pontosDePeso(a,eventos);const kg=pesoNaData(pts,hoje(),gmdRebanho);if(kg>0)kgHoje+=kg;else semPeso++;}
-    const ua=kgHoje/UA_KG;
+    let kgHoje=0,comPeso=0,semPeso=0;
+    for(const a of ativos){const pts=pontosDePeso(a,eventos);const kg=pesoNaData(pts,hoje(),gmdRebanho);if(kg>0){kgHoje+=kg;comPeso++;}else semPeso++;}
+    // Animal sem nenhum peso entra com o peso médio dos que têm peso (V172).
+    const kgMedio=comPeso?kgHoje/comPeso:0;
+    const ua=(kgHoje+semPeso*kgMedio)/UA_KG;
     // no período
     let ganhoKg=0,noPeriodo=0,mortes=0,femeas=0,partos=0;
     for(const a of meus){
@@ -334,8 +338,9 @@ function indicadoresPropriedades(dados,jan){
     }
     const anos=Math.max(diasEntreDatas(jan.ini,jan.fim),1)/365;
     const arrobas=ganhoKg/30;
-    return {nome:pr.nome,todas,area,ativos:ativos.length,ua,lotacao:area>0?ua/area:null,semPeso,
-      arrobas,arrobasHaAno:area>0?arrobas/area/anos:null,noPeriodo,mortes,mortalidade:noPeriodo?mortes/noPeriodo:null,
+    const alq=area/HA_POR_ALQUEIRE;
+    return {nome:pr.nome,todas,area,alq,ativos:ativos.length,ua,uaAlq:alq>0?ua/alq:null,cabAlq:alq>0?ativos.length/alq:null,semPeso,kgMedio,
+      arrobas,arrobasAlqAno:alq>0?arrobas/alq/anos:null,noPeriodo,mortes,mortalidade:noPeriodo?mortes/noPeriodo:null,
       femeas,partos,prenhez:femeas?partos/femeas:null};
   });
 }
@@ -347,26 +352,31 @@ async function telaAnalisePropriedade(){
   const anoAtual=Number(hoje().slice(0,4));
   const opts=[["12m","Últimos 12 meses"],...[0,1,2].map(i=>[String(anoAtual-i),`Ano ${anoAtual-i}`])];
   const pct=v=>v==null?"—":`${kgFmt(v*100)}%`;
-  const card=r=>`<div class="card pr-card${r.todas?" pr-total":""}">
-      <div class="an-item-cab"><div class="ti" style="font-size:17px">${esc(r.nome)}</div><span class="chip chip-lote">${r.area>0?kgFmt(r.area)+" ha":"sem área"}</span></div>
+  // Sinal da lotação em animais por alqueire (V172): até 6,5 verde · até 7,5 amarelo · acima vermelho · acima de 10 vermelho forte.
+  const sinal=c=>c==null?["","Sem área cadastrada"]:c<=6.5?["sinal-verde","Dentro do ideal"]:c<=7.5?["sinal-amarelo","Atenção"]:c<=10?["sinal-vermelho","Acima do ideal"]:["sinal-vermelho-forte","Muito acima do ideal"];
+  const card=r=>{const [cls,txt]=sinal(r.cabAlq);return `<div class="card pr-card${r.todas?" pr-total":""}">
+      <div class="an-item-cab"><div class="ti" style="font-size:17px">${esc(r.nome)}</div><span class="chip chip-lote">${r.alq>0?kgFmt(r.alq,2)+" alq":"sem área"}</span></div>
+      <div class="pr-lotacao ${cls}"><div><span>Lotação hoje</span><b>${r.cabAlq!=null?kgFmt(r.cabAlq)+" animais/alq":"—"}</b>
+        <small>${r.ativos} ativo(s) · ${kgFmt(r.ua)} UA${r.uaAlq!=null?` · ${kgFmt(r.uaAlq,2)} UA/alq`:""}</small></div>
+        <div class="pr-sinal"><i></i>${txt}</div></div>
       <div class="pr-grade">
-        <div><span>Lotação hoje</span><b>${r.lotacao!=null?kgFmt(r.lotacao,2)+" UA/ha":"—"}</b><small>${kgFmt(r.ua)} UA · ${r.ativos} ativo(s)</small></div>
-        <div><span>@ produzidas</span><b>${r.arrobasHaAno!=null?kgFmt(r.arrobasHaAno)+" @/ha/ano":"—"}</b><small>${kgFmt(r.arrobas)} @ no período</small></div>
+        <div><span>@ produzidas</span><b>${r.arrobasAlqAno!=null?kgFmt(r.arrobasAlqAno)+" @/alq/ano":"—"}</b><small>${kgFmt(r.arrobas)} @ no período</small></div>
         <div><span>Mortalidade</span><b class="${r.mortes?"neg":""}">${pct(r.mortalidade)}</b><small>${r.mortes} morte(s) · ${r.noPeriodo} no rebanho no período</small></div>
-        <div><span>Prenhezes indesejadas</span><b class="${r.partos?"neg":""}">${pct(r.prenhez)}</b><small>${r.partos} parto(s) · ${r.femeas} fêmea(s) no período</small></div>
+        <div class="full"><span>Prenhezes indesejadas</span><b class="${r.partos?"neg":""}">${pct(r.prenhez)}</b><small>${r.partos} parto(s) · ${r.femeas} fêmea(s) no período</small></div>
       </div>
-      ${r.area>0?"":`<div class="eq-aviso" style="margin-top:10px">Cadastre a área (ha) dos pastos desta propriedade para calcular lotação e @/ha.</div>`}
-      ${r.semPeso?`<div class="meta" style="margin-top:8px">Fora da lotação por não ter nenhum peso registrado: ${r.semPeso}.</div>`:""}
-    </div>`;
+      ${r.alq>0?"":`<div class="eq-aviso" style="margin-top:10px">Cadastre a área (em alqueires) dos pastos desta propriedade para calcular lotação e @ por alqueire.</div>`}
+      ${r.semPeso?`<div class="meta" style="margin-top:8px">${r.semPeso} animal(is) sem peso registrado entraram nas UA com o peso médio (${kgFmt(r.kgMedio,0)} kg).</div>`:""}
+    </div>`;};
   $t.innerHTML=`<button class="voltar" onclick="telaAnaliseZootecnica()">‹ Análise</button>
     <div class="sechead"><span class="sic" data-ico="casa"></span><h2>Análise por propriedade</h2></div>
     <label style="margin-top:0">Período</label>
     <select id="pr_periodo" onchange="_prPeriodo=this.value;telaAnalisePropriedade()">${opts.map(([k,t])=>`<option value="${k}" ${_prPeriodo===k?"selected":""}>${t}</option>`).join("")}</select>
     <div class="meta" style="margin:6px 4px 12px">${fmt(jan.ini)} a ${fmt(jan.fim)}</div>
+    <div class="pr-legenda"><span class="sinal-verde"><i></i>até 6,5</span><span class="sinal-amarelo"><i></i>6,6 a 7,5</span><span class="sinal-vermelho"><i></i>7,6 a 10</span><span class="sinal-vermelho-forte"><i></i>acima de 10</span><small>Sinal da lotação, em animais por alqueire (1 alqueire = 4,84 ha)</small></div>
     ${res.filter(r=>!r.todas).map(card).join("")}
     ${propriedades.length>1?card(res.find(r=>r.todas)):""}
-    <div class="calc-formula"><b>Como é calculado:</b> cada animal conta na propriedade do seu lote. Área = soma da área dos pastos.
-      <b>Lotação</b> = peso estimado de hoje ÷ 450 kg (1 UA) ÷ ha. <b>@ produzidas</b> = peso ganho no período ÷ 30 (carcaça com 50% de rendimento), por ha e por ano.
+    <div class="calc-formula"><b>Como é calculado:</b> 1 alqueire = 4,84 ha. Cada animal conta na propriedade do seu lote. Área = soma da área dos pastos.
+      <b>Lotação</b> = animais ativos ÷ alqueires (o sinal de cor usa esse número); em UA = peso estimado de hoje ÷ 450 kg ÷ alqueires (animal sem peso entra com o peso médio). <b>@ produzidas</b> = peso ganho no período ÷ 30 (carcaça com 50% de rendimento), por alqueire e por ano.
       O peso de cada data é estimado entre a entrada, as pesagens e a venda; depois da última pesagem soma o GMD do animal (ou o médio do rebanho) — quanto mais pesagens, mais preciso.
       <b>Mortalidade</b> = mortes ÷ animais que passaram pelo rebanho no período. <b>Prenhezes indesejadas</b> = partos na propriedade ÷ fêmeas no período (como só entram bezerras compradas, todo parto é prenhez ocorrida na propriedade).</div>`;
 }

@@ -59,6 +59,14 @@ async function numerarSemCodigo(){
   }catch(e){console.error("Numeração automática V133:",e);return 0;}
 }
 const numBR=id=>{let v=val(id);if(!v)return null;if(v.includes(','))v=v.replace(/\./g,'').replace(',','.');const n=parseFloat(v);return isNaN(n)?null:n;};
+/* Área (V172): o app mostra e recebe área sempre em ALQUEIRE (1 alqueire = 4,84 ha).
+   No banco continua gravado em hectares (pt.areaHa), para não mexer nos dados já salvos. */
+const HA_POR_ALQUEIRE=4.84;
+const haParaAlq=ha=>ha==null||ha===""?null:Number(ha)/HA_POR_ALQUEIRE;
+const alqTxt=ha=>{const a=haParaAlq(ha);return a==null?"":`${a.toLocaleString('pt-BR',{maximumFractionDigits:2})} alq`;};
+const alqCampo=ha=>{const a=haParaAlq(ha);return a==null?"":a.toLocaleString('pt-BR',{maximumFractionDigits:2,useGrouping:false});};
+// Lê o campo em alqueires e devolve hectares; se o texto não mudou, mantém o valor original (sem arredondar).
+const areaDoCampo=(id,haOriginal)=>{const txt=val(id);if(haOriginal!=null&&txt===alqCampo(haOriginal))return haOriginal;const a=numBR(id);return a==null?null:a*HA_POR_ALQUEIRE;};
 const moeda=n=>n==null?"—":n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 /* V121 — liquidação: cada lançamento guarda seus pagamentos/recebimentos (l.pagamentos).
    Saldo em aberto = valor − soma dos pagamentos. Registros antigos sem a lista usam l.pago. */
