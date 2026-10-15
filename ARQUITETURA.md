@@ -50,7 +50,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 09-perfil-nuvem-sincronizacao.js | Perfil (aberto pela foto do topo): dados do usuário, cadastro/edição de propriedades e marcas, conta, sincronização e cópias de segurança |
 | 10-formularios.js | Janela (`abrir`/`fechar`), menu ☰, "Sobre o app" e entrada do Financeiro |
 | 11-financeiro.js | Resumo, lançamentos, relatórios e custos de produção por lote |
-| 12-estoque.js | Estoque de insumos: itens, entradas, consumos, ficha e foto do item |
+| 12-estoque.js | Estoque de insumos: página com busca, filtros e ordenação; cadastro (com foto, entrada inicial e bloqueio de item repetido), entradas, consumos, ficha do item |
 | 13-grupos-pastos-cadastros.js | Grupos, cadastro de pastos, saída e edição do animal |
 | 14-manejo-medicamentos.js | Manejo, aplicação de medicamento integrada ao estoque, troca de lote |
 | 15-backup.js | Backup manual em arquivo |
@@ -70,7 +70,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 06-venda-financeiro.js | Cálculo único da venda e integração com o Financeiro | `formLancamento`, `salvarVendaV92` |
 | 07-financeiro-classificacao.js | Natureza (receita/custo/despesa/investimento) e apropriação | `formLancamento`, `finResumo`, `finLancamentos` |
 | 08-animais-baixados.js | Vendidos/mortos fora da lista ativa | `telaAnimais`, `telaAnimaisBaixados` |
-| 09-lancamentos-estoque-ui.js | Filtros do financeiro, pagamentos, lista do estoque, consumo com destino | `telaEstoque`, `salvarConsumoInsumo`, `finLancamentos` |
+| 09-lancamentos-estoque-ui.js | Filtros do financeiro, pagamentos, consumo do estoque com destino | `salvarConsumoInsumo`, `finLancamentos` |
 | 10-compra-animal.js | Cálculo da compra no cadastro do animal | `formNovoAnimal`, `salvarAnimal` |
 | 11-contabilidade.js | Livro Diário: partidas automáticas, estornos, baixa por morte | `put`, `del`, `finRelatorios`, `formNovoAnimal` |
 | 12-busca-versao.js | Busca no Livro Diário e "Versão N" na tela inicial | `telaInicio`, `finHistoricoContabil` |

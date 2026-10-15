@@ -7,42 +7,73 @@
 function catsDoGrupo(g){return g==="manutencao"?CAT_INSUMO_MANUT:CAT_INSUMO_GADO;}
 const numFmt=n=>Number(n||0).toLocaleString('pt-BR',{maximumFractionDigits:3});
 
+/* ---------- Página do Estoque (V173): busca, filtros e lista compacta ---------- */
+let _estFiltro="todos",_estOrdem="nome",_estHistAberto=false;
+const FILTROS_ESTOQUE=[["todos","Todos"],["med","Remédios e vacinas"],["gado","Insumos do gado"],["manutencao","Manutenção"],["zerado","Sem saldo"]];
+// Texto normalizado para busca e para achar itens repetidos: sem acento, minúsculo, só letras e números.
+const normalizarNome=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9%]+/g," ").trim();
+// Chave para achar repetidos: ignora também os espaços ("Ivermectina 4 %" = "ivermectina 4%").
+const chaveNome=t=>normalizarNome(t).replace(/\s+/g,"");
+function filtraEstoque(i,f){
+  if(f==="med")return ehMedicamentoEstoque(i);
+  if(f==="gado")return (i.grupo||"gado")==="gado";
+  if(f==="manutencao")return i.grupo==="manutencao";
+  if(f==="zerado")return Number(i.saldo||0)<=0;
+  return true;
+}
 async function telaEstoque(){
   if(!(await podeUsarApp("Estoque de insumos")))return;
   topoPagina();
-  const insumos=(await getAll("insumos")).sort((a,b)=>(a.nome||"").localeCompare(b.nome||""));
-  const movs=await getAll("insumo_mov");
+  const insumos=await getAll("insumos"),movs=await getAll("insumo_mov");
   const valorTotal=insumos.reduce((s,i)=>s+(i.saldo||0)*(i.custoMedio||0),0);
   const aPagarIns=movs.filter(m=>m.tipo==="entrada"&&!m.pago).reduce((s,m)=>s+(m.valorTotal||0),0);
-  const bloco=(gkey,gnome,gic)=>{
-    const itens=insumos.filter(i=>i.grupo===gkey);
-    const linhas=itens.length?itens.map(i=>{
-      const vv=(i.saldo||0)*(i.custoMedio||0);
-      const baixo=(i.saldo||0)<=0;
-      return `<div class="card">
-        <div class="row"><div class="ti" style="font-size:15px">${esc(i.nome)}</div>
-          <div style="white-space:nowrap"><button class="btn-fant" style="padding:2px 6px;color:var(--verde)" onclick="formEditarInsumo('${i.id}')">✎</button>
-          <button class="btn-fant" style="padding:2px 6px;color:var(--perigo)" onclick="excluirInsumo('${i.id}')">✕</button></div></div>
-        <div class="meta">${esc(i.categoria||"")}${i.categoria?" · ":""}Saldo: <b style="color:${baixo?'#c0392b':'var(--texto)'}">${numFmt(i.saldo)} ${esc(i.unidade||"un")}</b> · ${moeda(i.custoMedio||0)}/${esc(i.unidade||"un")} · ${moeda(vv)}</div>
-        <div style="margin-top:8px;display:flex;gap:10px">
-          <button class="btn btn-sec" style="margin:0;flex:1" onclick="formEntradaInsumo('${i.id}')">＋ Entrada</button>
-          <button class="btn btn-sec" style="margin:0;flex:1" onclick="formConsumoInsumo('${i.id}')">${(typeof ehMedicamentoEstoque==='function'&&ehMedicamentoEstoque(i))?'💉 Aplicar':'－ Consumo'}</button>
-        </div></div>`;
-    }).join(""):`<div class="meta" style="padding:2px 4px 8px">Nenhum item cadastrado neste grupo.</div>`;
-    return `<div class="h3">${gic} ${gnome}</div>
-      <button class="btn btn-sec" onclick="formNovoInsumo('${gkey}')">+ Novo item</button>
-      ${linhas}`;
-  };
+  const conta=f=>insumos.filter(i=>filtraEstoque(i,f)).length;
+  const ordem={nome:(a,b)=>(a.nome||"").localeCompare(b.nome||"","pt-BR"),
+    saldo:(a,b)=>(Number(a.saldo)||0)-(Number(b.saldo)||0)||(a.nome||"").localeCompare(b.nome||""),
+    valor:(a,b)=>(b.saldo||0)*(b.custoMedio||0)-(a.saldo||0)*(a.custoMedio||0)}[_estOrdem]||((a,b)=>0);
+  const lista=insumos.filter(i=>filtraEstoque(i,_estFiltro)).sort(ordem);
+  const medsZerados=insumos.filter(i=>ehMedicamentoEstoque(i)&&Number(i.saldo||0)<=0).length;
+  const item=i=>{const med=ehMedicamentoEstoque(i),sd=Number(i.saldo||0),un=esc(i.unidade||"un");
+    const busca=normalizarNome([i.nome,i.marca,i.fabricante,i.categoria,i.tipoMed].join(" "));
+    return `<div class="est-item" data-b="${esc(busca)}">
+      <div class="est-lin" onclick="fichaInsumo('${i.id}')">
+        <div class="est-foto">${i.foto?`<img src="${esc(i.foto)}" alt="">`:ico(med?"seringa":"caixa")}</div>
+        <div style="min-width:0"><div class="est-nome">${esc(i.nome)}</div>
+          <div class="est-sub">${[esc(i.categoria||""),`${moeda(i.custoMedio||0)}/${un}`].filter(Boolean).join(" · ")}${(i.marca||i.fabricante)?`<br>${[i.marca,i.fabricante].filter(Boolean).map(esc).join(" · ")}`:""}</div></div>
+        <div class="est-saldo"><b class="${sd<=0?"zero":""}">${numFmt(sd)}</b><span>${un}</span></div>
+      </div>
+      <div class="est-acoes"><button onclick="formEntradaInsumo('${i.id}')">＋ Entrada</button>
+        <button onclick="formConsumoInsumo('${i.id}')" ${sd<=0?"disabled":""}>－ ${med?"Aplicar":"Consumo"}</button></div>
+    </div>`;};
   $t.innerHTML=`<button class="voltar" onclick="telaPainel()">‹ Gestão Operacional</button>
-    <div class="sechead"><span class="sic">📦</span><h2>Estoque de Insumos</h2></div>
-    <div class="fin-cards" style="margin-bottom:6px">
-      <div class="fin-c"><div class="cl">📦 Valor em estoque</div><div class="cv">${moeda(valorTotal)}</div></div>
-      <div class="fin-c"><div class="cl">📌 A pagar (compras)</div><div class="cv">${moeda(aPagarIns)}</div></div>
-    </div>
-    ${bloco("gado","Insumos do gado","💊")}
-    ${bloco("manutencao","Manutenção da propriedade","🔧")}
-    <div class="h3">Últimos movimentos</div>
-    ${await histEstoque(insumos,movs)}`;
+    <div class="sechead"><span class="sic" data-ico="caixa"></span><h2>Estoque de Insumos</h2></div>
+    <div class="est-resumo"><div><span>Valor em estoque</span><b>${moeda(valorTotal)}</b></div>
+      <div><span>A pagar (compras)</span><b>${moeda(aPagarIns)}</b></div><div><span>Itens</span><b>${insumos.length}</b></div></div>
+    <button class="btn btn-ico" onclick="escolherGrupoNovoInsumo()">${ico("caixa")} Novo item no estoque</button>
+    <div class="est-busca"><input id="est_busca" type="search" placeholder="Buscar por nome, marca, fabricante…" oninput="filtrarEstoque()"></div>
+    <div class="est-chips">${FILTROS_ESTOQUE.map(([k,t])=>`<button class="${_estFiltro===k?"on":""}${k==="zerado"&&conta(k)?" alerta":""}" onclick="_estFiltro='${k}';telaEstoque()">${t}<small>${conta(k)}</small></button>`).join("")}</div>
+    <div class="est-ordem"><span id="est_qtd">${lista.length} item(ns)</span>
+      <label>Ordenar <select id="est_ordem" onchange="_estOrdem=this.value;telaEstoque()">
+        <option value="nome" ${_estOrdem==="nome"?"selected":""}>Nome</option><option value="saldo" ${_estOrdem==="saldo"?"selected":""}>Menor saldo</option><option value="valor" ${_estOrdem==="valor"?"selected":""}>Maior valor</option></select></label></div>
+    ${medsZerados&&_estFiltro!=="zerado"?`<button class="est-aviso" onclick="_estFiltro='zerado';telaEstoque()">⚠️ ${medsZerados} remédio(s)/vacina(s) sem saldo — a aplicação fica bloqueada. Ver ›</button>`:""}
+    <div class="card est-lista" id="est_lista">${lista.map(item).join("")||`<div class="meta" style="padding:10px 2px">Nenhum item neste filtro.</div>`}
+      <div class="meta est-nada" id="est_nada" style="display:none;padding:10px 2px">Nenhum item encontrado na busca.</div></div>
+    <details class="est-hist" ${_estHistAberto?"open":""} ontoggle="_estHistAberto=this.open"><summary>Últimos movimentos <small>(${movs.length})</small></summary>
+      ${await histEstoque(insumos,movs)}</details>`;
+}
+function filtrarEstoque(){
+  const q=normalizarNome(val("est_busca"));let n=0;
+  document.querySelectorAll("#est_lista .est-item").forEach(el=>{const ok=!q||q.split(" ").every(p=>el.dataset.b.includes(p));el.style.display=ok?"":"none";if(ok)n++;});
+  const qt=document.getElementById("est_qtd");if(qt)qt.textContent=`${n} item(ns)`;
+  const nada=document.getElementById("est_nada");if(nada)nada.style.display=n?"none":"block";
+}
+// Escolhe o grupo do item novo (gado ou manutenção) antes do formulário.
+function escolherGrupoNovoInsumo(){
+  abrir(`<h2>Novo item no estoque</h2><div class="meta" style="margin-bottom:10px">Que tipo de item é?</div>
+    <div class="sheet-item rt" onclick="formNovoInsumo('gado','', 'Medicamento')"><span class="si" data-ico="seringa"></span><div><b>Remédio ou vacina</b><div class="meta">Medicamentos, vacinas, vermífugos, hormônios</div></div></div>
+    <div class="sheet-item rt" onclick="formNovoInsumo('gado','', 'Sal mineral')"><span class="si" data-ico="boi"></span><div><b>Outro insumo do gado</b><div class="meta">Sal mineral, suplemento, ração</div></div></div>
+    <div class="sheet-item rt" onclick="formNovoInsumo('manutencao')"><span class="si" data-ico="cerca"></span><div><b>Manutenção da propriedade</b><div class="meta">Arame, estaca, combustível, herbicida, peças</div></div></div>
+    <button class="btn btn-sec" style="margin-top:14px" onclick="fechar()">Cancelar</button>`);
 }
 /* V149: ficha do item de estoque (tocar na linha) e foto do produto */
 async function fichaInsumo(id){
@@ -70,7 +101,7 @@ function fotoInsumo(input,id){const f=input.files&&input.files[0];if(!f)return;
   lerFotoRedimensionada(f,async d=>{const it=await get("insumos",id);if(!it)return;it.foto=d;await put("insumos",it);fichaInsumo(id);telaEstoqueManter();});}
 async function removerFotoInsumo(id){const it=await get("insumos",id);if(!it)return;it.foto="";await put("insumos",it);fichaInsumo(id);telaEstoqueManter();}
 // Redesenha a lista do estoque por trás da ficha, mantendo as seções abertas
-async function telaEstoqueManter(){if(document.querySelector(".est113-sec"))await telaEstoque();}
+async function telaEstoqueManter(){if(document.getElementById("est_lista"))await telaEstoque();}
 async function histEstoque(insumos,movs){
   const nomeIns=id=>(insumos.find(i=>i.id===id)||{}).nome||"item removido";
   const arr=movs.slice().sort((a,b)=>(b.data||"").localeCompare(a.data||"")||(b.criadoEm||0)-(a.criadoEm||0)).map(m=>{
@@ -105,7 +136,8 @@ async function formNovoInsumo(grupo,editId,catPadrao){
     <label>Grupo</label><input value="${g==="manutencao"?"Manutenção da propriedade":"Insumos do gado"}" disabled>
     <input type="hidden" id="in_grupo" value="${g}">
     <label>Categoria</label><select id="in_cat" onchange="trocarCategoriaInsumo(${ed?"true":"false"})">${optCat}</select>
-    <label>Nome *</label><input id="in_nome" value="${ed?esc(ed.nome||""):""}" placeholder="${esc(exemplo)}">
+    <label>Nome *</label><input id="in_nome" value="${ed?esc(ed.nome||""):""}" placeholder="${esc(exemplo)}" oninput="avisarInsumoRepetido(${ed?`'${ed.id}'`:""})" autocomplete="off">
+    <div id="in_repetido"></div>
     <div id="in_grp_med" style="display:${med?"block":"none"}">
       <div id="in_grp_tipo" style="display:${catAtual==="Medicamento"?"block":"none"}"><label>Tipo de medicamento</label>
         <select id="in_tipomed"><option value="">— selecione —</option>${TIPOS_MEDICAMENTO.map(t=>`<option value="${t}" ${ed&&ed.tipoMed===t?"selected":""}>${t}</option>`).join("")}</select></div>
@@ -114,8 +146,11 @@ async function formNovoInsumo(grupo,editId,catPadrao){
       <label>Observação</label><input id="in_obs" value="${ed?esc(ed.obs||""):""}" placeholder="Ex: carência de 35 dias, guardar na geladeira">
     </div>
     <label>Unidade</label><select id="in_un">${optUn}</select>
+    ${ed?"":`<label>Já quer dar entrada de alguma quantidade?</label>
+    <div class="in-entrada"><label><input type="radio" name="in_ent" id="in_ent_sim" checked> Sim, registrar a compra agora</label>
+      <label><input type="radio" name="in_ent" id="in_ent_nao"> Não, só cadastrar</label></div>`}
     <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
-      <button class="btn" onclick="salvarInsumo(${ed?`'${ed.id}'`:""})">Salvar</button></div>`);
+      <button class="btn" onclick="salvarInsumo(${ed?`'${ed.id}'`:""})">${ed?"Salvar":"Salvar e continuar"}</button></div>`);
 }
 function escolherFotoNovoInsumo(input){const f=input.files&&input.files[0];if(!f)return;
   lerFotoRedimensionada(f,d=>{_insumoFoto=d;const el=document.getElementById("in_foto_prev");if(el)el.innerHTML=`<img src="${d}" alt="">`;});}
@@ -129,15 +164,36 @@ function trocarCategoriaInsumo(editando){
   const gt=document.getElementById("in_grp_tipo");if(gt)gt.style.display=cat==="Medicamento"?"block":"none";
 }
 async function formEditarInsumo(id){formNovoInsumo(null,id);}
+// Itens com o mesmo nome (sem acento, maiúscula ou pontuação) no mesmo grupo são considerados repetidos.
+async function insumoRepetido(nome,grupo,ignorarId){
+  const n=chaveNome(nome);if(!n)return null;
+  return (await getAll("insumos")).find(i=>i.id!==ignorarId&&(i.grupo||"gado")===(grupo||"gado")&&chaveNome(i.nome)===n)||null;
+}
+async function avisarInsumoRepetido(ignorarId){
+  const box=document.getElementById("in_repetido");if(!box)return;
+  const nome=val("in_nome"),grupo=val("in_grupo")||"gado",n=chaveNome(nome);
+  if(n.length<3){box.innerHTML="";return;}
+  const itens=(await getAll("insumos")).filter(i=>i.id!==ignorarId&&(i.grupo||"gado")===grupo);
+  const igual=itens.find(i=>chaveNome(i.nome)===n);
+  const parecidos=igual?[]:itens.filter(i=>{const m=chaveNome(i.nome);return m.includes(n)||n.includes(m);}).slice(0,3);
+  box.innerHTML=igual?`<div class="eq-aviso" style="margin-top:8px">Já existe <b>${esc(igual.nome)}</b> no estoque (saldo ${numFmt(igual.saldo)} ${esc(igual.unidade||"un")}). Não dá para cadastrar de novo.
+      <button class="btn-fant" style="color:var(--verde);font-weight:700;padding:6px 0 0" onclick="formEntradaInsumo('${igual.id}')">＋ Dar entrada nele</button></div>`
+    :parecidos.length?`<div class="meta" style="margin-top:6px">Parecidos já cadastrados: ${parecidos.map(i=>`<b>${esc(i.nome)}</b>`).join(", ")}</div>`:"";
+}
 async function salvarInsumo(id){
   const nome=val("in_nome"); if(!nome)return alert("Dê um nome ao item.");
   const grupo=val("in_grupo")||"gado", categoria=val("in_cat"), unidade=val("in_un");
+  const rep=await insumoRepetido(nome,grupo,id);
+  if(rep)return alert(`Já existe "${rep.nome}" no estoque. Use ＋ Entrada nele em vez de cadastrar de novo.`);
+  const darEntrada=!id&&!!(document.getElementById("in_ent_sim")||{}).checked;
   const med=grupo==="gado"&&CAT_MED_ESTOQUE.includes(categoria);
   const extra=med?{tipoMed:categoria==="Medicamento"?val("in_tipomed"):"",fabricante:val("in_fab"),marca:val("in_marca"),obs:val("in_obs")}:{};
   if(id){const it=await get("insumos",id);if(it){it.nome=nome;it.categoria=categoria;it.unidade=unidade;it.foto=_insumoFoto||"";Object.assign(it,extra);await put("insumos",it);}}
-  else await put("insumos",{id:uid(),nome,grupo,categoria,unidade,saldo:0,custoMedio:0,foto:_insumoFoto||"",...extra,criadoEm:Date.now()});
+  let novoId=null;
+  if(!id){novoId=uid();await put("insumos",{id:novoId,nome,grupo,categoria,unidade,saldo:0,custoMedio:0,foto:_insumoFoto||"",...extra,criadoEm:Date.now()});}
   _insumoFoto="";
-  fechar();telaEstoque();
+  if(novoId&&darEntrada)return formEntradaInsumo(novoId,true); // segue direto para a entrada (compra)
+  fechar();recarregarTelaAtual();
 }
 async function excluirInsumo(id){
   const movs=(await getAll("insumo_mov")).filter(m=>m.insumoId===id);
@@ -145,22 +201,24 @@ async function excluirInsumo(id){
   if(!confirm("Excluir este item de estoque?"))return;
   await del("insumos",id);fechar();telaEstoque();
 }
-async function formEntradaInsumo(id){
+async function formEntradaInsumo(id,itemNovo){
   const it=await get("insumos",id); if(!it){telaEstoque();return;}
   abrir(`<h2>Entrada — ${esc(it.nome)}</h2>
+    ${itemNovo?`<div class="eq-aviso" style="background:var(--verde-lite);color:var(--verde-esc)">✓ Item cadastrado. Agora registre a compra (ou toque em "Pular").</div>`:""}
     <div class="meta" style="margin-bottom:8px">Saldo atual: <b>${numFmt(it.saldo)} ${esc(it.unidade||"un")}</b> · custo médio ${moeda(it.custoMedio||0)}</div>
     <label>Quantidade (${esc(it.unidade||"un")}) *</label><input id="en_qtd" inputmode="decimal" placeholder="Ex: 10">
     <label>Valor total pago (R$) *</label><input id="en_valor" inputmode="decimal" placeholder="Ex: 250">
-    <label>Data</label><input id="en_data" type="date" value="${hoje()}">
+    <label>Data</label><input id="en_data" type="date" value="${hoje()}" max="${hoje()}">
     <label>Forma de pagamento</label><select id="en_forma"><option value="vista">À vista</option><option value="prazo">A prazo (fica a pagar)</option></select>
     <label>Observação (opcional)</label><input id="en_obs" placeholder="Ex: nota, fornecedor…">
-    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
+    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar();recarregarTelaAtual()">${itemNovo?"Pular":"Cancelar"}</button>
       <button class="btn" onclick="salvarEntradaInsumo('${id}')">Salvar</button></div>`);
 }
 async function salvarEntradaInsumo(id){
   const qtd=numBR("en_qtd"), valor=numBR("en_valor");
   if(qtd==null||qtd<=0)return alert("Informe a quantidade.");
   if(valor==null||valor<0)return alert("Informe o valor total.");
+  if((val("en_data")||hoje())>hoje())return alert("A data da entrada não pode ser no futuro.");
   const it=await get("insumos",id); if(!it)return;
   const saldoAnt=it.saldo||0, custoAnt=it.custoMedio||0, novoSaldo=saldoAnt+qtd;
   it.custoMedio=novoSaldo>0?((saldoAnt*custoAnt)+valor)/novoSaldo:0; // média móvel ponderada
@@ -168,8 +226,8 @@ async function salvarEntradaInsumo(id){
   await put("insumos",it);
   const forma=(document.getElementById("en_forma")||{}).value||"vista";
   await put("insumo_mov",{id:uid(),insumoId:id,tipo:"entrada",qtd,unidade:it.unidade||"un",
-    valorTotal:valor,pago:forma==="vista",data:val("en_data"),obs:val("en_obs"),criadoEm:Date.now()});
-  fechar();telaEstoque();
+    valorTotal:valor,pago:forma==="vista",data:val("en_data")||hoje(),obs:val("en_obs"),criadoEm:Date.now()});
+  fechar();recarregarTelaAtual();
 }
 async function pagarEntradaInsumo(movId){
   const m=await get("insumo_mov",movId); if(!m)return telaEstoque();
