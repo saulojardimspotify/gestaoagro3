@@ -67,7 +67,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 03-saida-animais.js | Venda/morte individual, múltipla, por lote ou grupo | `formSaida`, `blocoSaida` |
 | 04-calculadora-pecuaria.js | Calculadora da Pecuária (visual em css/estilo.css): valor da negociação, ponto de equilíbrio da recria/engorda e macho ou fêmea | `telaPainel`, `telaCalculadora*`, `ptEquilibrio`, `compararMachoFemea` |
 | 05-saida-menu.js | Página Venda / Morte de Animal | `telaVendaMorteAnimal` |
-| 06-venda-financeiro.js | Cálculo único da venda e integração com o Financeiro | `formLancamento`, `salvarVendaV92` |
+| 06-venda-financeiro.js | Cálculo único da venda (tara só nos animais informados, padrão 7,5 kg) e integração com o Financeiro | `formLancamento`, `salvarVendaV92` |
 | 07-financeiro-classificacao.js | Natureza (receita/custo/despesa/investimento) e apropriação | `formLancamento`, `finResumo`, `finLancamentos` |
 | 08-animais-baixados.js | Vendidos/mortos fora da lista ativa | `telaAnimais`, `telaAnimaisBaixados` |
 | 09-lancamentos-estoque-ui.js | Filtros do financeiro, pagamentos, consumo do estoque com destino | `salvarConsumoInsumo`, `finLancamentos` |
