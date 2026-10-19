@@ -21,11 +21,7 @@ async function excluirEvento(eventoId,animalId){
   }
   verAnimal(animalId);
 }
-async function moverAnimal(id,novoLote){
-  const a=await get("animais",id),de=await get("lotes",a.loteAtualId),para=await get("lotes",novoLote);
-  a.loteAtualId=novoLote;await put("animais",a);
-  await registrarEvento(id,"Movimentação",hoje(),`De "${de?de.nome:"—"}" para "${para?para.nome:"—"}"`);
-}
+// moverAnimal (troca de lote) fica em 08-lotes-animais.js desde a V177.
 
 /* ======================= ÍCONES (V136) ======================= */
 /* Conjunto único de ícones de traço, desenhados aqui (não dependem de emoji do aparelho). */

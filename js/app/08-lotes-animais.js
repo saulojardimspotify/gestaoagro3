@@ -87,13 +87,16 @@ async function formMoverSelecionados(){
     return`<option value="${l.id}">${esc(l.nome)}${p?` — ${esc(p.nome)}`:""}</option>`;}).join("");
   abrir(`<h2>Mover ${ids.length} animal(is)</h2><div class="meta">Cada animal ganha um registro de movimentação no histórico.</div>
     <label>Lote de destino</label><select id="mv_lote_varios">${opt}</select>
+    <label>Data da troca</label><input id="mv_data_varios" type="date" value="${hoje()}" max="${hoje()}">
     <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
       <button class="btn" onclick="confMoverSelecionados()">Mover</button></div>`);
 }
 async function confMoverSelecionados(){
   const destino=val("mv_lote_varios");if(!destino)return alert("Selecione o lote de destino.");
   const ids=loteSelecionados(),origem=document.getElementById("lote_lista").dataset.lote;
-  for(const id of ids)await moverAnimal(id,destino);
+  const data=val("mv_data_varios")||hoje();if(data>hoje())return alert("A data da troca não pode ser no futuro.");
+  const lotes=await getAll("lotes");
+  for(const id of ids)await moverAnimal(id,destino,data,null,lotes);
   fechar();
   const l=await get("lotes",destino);
   await verLote(origem);
@@ -239,6 +242,49 @@ function dataAquisicao(a){
   if(a.dataCompra)return a.dataCompra;
   return a.criadoEm?tsData(a.criadoEm):"";
 }
+/* ======================= TROCA DE LOTE E HISTÓRICO (V177) =======================
+   Toda troca de lote passa por moverAnimal(): muda o lote atual e grava o evento "Movimentação"
+   com loteDeId/loteParaId. Com isso o app sabe em que lote — e, pelo histórico dos pastos, em que
+   pasto e propriedade — o animal estava em cada data (usado na Análise).
+   Movimentações antigas (sem os ids) são lidas pelo texto 'De "X" para "Y"' (nome do lote). */
+async function moverAnimal(id,novoLote,data,hora,lotesCache){
+  const a=await get("animais",id);if(!a||!novoLote||a.loteAtualId===novoLote)return false;
+  const lotes=lotesCache||await getAll("lotes"),nome=lid=>(lotes.find(l=>l.id===lid)||{}).nome||"—";
+  const de=a.loteAtualId||null;
+  a.loteAtualId=novoLote;await put("animais",a);
+  await registrarEvento(id,"Movimentação",data||hoje(),`De "${nome(de)}" para "${nome(novoLote)}"`,
+    {hora:hora||horaAgora(),loteDeId:de,loteParaId:novoLote});
+  return true;
+}
+// Períodos do animal em cada lote: [{loteId, ini, fim}] (datas "aaaa-mm-dd"; ini null = desde a entrada
+// sem data; fim null = até hoje). O último período é sempre o lote atual do animal.
+function historicoLotesAnimal(a,eventos,lotes){
+  const idPorNome=n=>{const l=lotes.find(x=>x.nome===n);return l?l.id:null;};
+  const movs=eventos.filter(e=>e.animalId===a.id&&e.tipo==="Movimentação"&&e.data).map(e=>{
+    let de=e.loteDeId,para=e.loteParaId;
+    if(de===undefined&&para===undefined){const m=/De "(.*)" para "(.*)"/.exec(e.detalhes||"");if(m){de=idPorNome(m[1]);para=idPorNome(m[2]);}}
+    return {data:e.data,criadoEm:e.criadoEm||0,de:de||null,para:para||null};
+  }).sort((x,y)=>x.data.localeCompare(y.data)||x.criadoEm-y.criadoEm);
+  const entrada=(a.nascidoNaPropriedade===true?a.dataNascimento:dataAquisicao(a))||null;
+  const saida=a.status!=="Ativo"&&a.saida&&a.saida.data?a.saida.data:null;
+  const per=[];let lote=movs.length?movs[0].de:a.loteAtualId,ini=entrada;
+  for(const m of movs){
+    if(entrada&&m.data<entrada)continue; // movimentação antes da entrada (data errada): ignora
+    if(m.data!==ini||per.length||ini==null)per.push({loteId:lote,ini,fim:m.data});
+    lote=m.para;ini=m.data;
+  }
+  per.push({loteId:a.loteAtualId||lote,ini,fim:saida});
+  // Lote que não se sabe mais (nome mudou ou foi apagado): usa o lote do período seguinte.
+  for(let i=per.length-2;i>=0;i--)if(!per[i].loteId)per[i].loteId=per[i+1].loteId;
+  return per.filter(p=>!(p.ini&&p.fim&&p.fim<p.ini));
+}
+// Lote em que o animal estava numa data.
+function loteDoAnimalNaData(a,data,eventos,lotes){
+  const per=historicoLotesAnimal(a,eventos,lotes);
+  const p=per.find(p=>(!p.ini||p.ini<=data)&&(!p.fim||data<p.fim))||per[per.length-1];
+  return p?p.loteId:null;
+}
+
 function origemTag(a){
   if(!a)return "";
   if(a.nascidoNaPropriedade===true)return `<span class="origem-tag">Nasc. ${a.dataNascimento?fmt(a.dataNascimento):"—"}</span>`;
@@ -309,7 +355,7 @@ async function verAnimal(id){
         ${a.nascidoNaPropriedade?`Origem: nascido na propriedade<br>`:(a.nascidoNaPropriedade===false?`Origem: comprado em ${dataAquisicao(a)?fmt(dataAquisicao(a)):"—"}${a.pesoCompraKg?` — ${a.pesoCompraKg} kg vivo`:""}<br>`:"")}
         ${a.custoEstoque?`Custo de estoque: ${moeda(a.custoEstoque)}<br>`:""}
         ${a.raca?`Raça: ${esc(a.raca)}<br>`:`Raça: não informada<br>`}
-        ${a.dataNascimento?`Nascimento: ${fmt(a.dataNascimento)}<br>`:""}
+        ${a.dataNascimento?`Nascimento: ${fmt(a.dataNascimento)}${Number(a.pesoNascimentoKg)>0?` — ${numFmt(a.pesoNascimentoKg)} kg ao nascer`:""}<br>`:""}
         ${mae?`Mãe: <b onclick="verAnimal('${mae.id}')" style="color:var(--verde);cursor:pointer">${esc(nomeMae(mae))}</b><br>`:(a.nascidoNaPropriedade===true?`Mãe: não informada<br>`:"")}
         ${filhos.length?`Filhos: ${filhos.length}`:""}</div>
       ${a.saida?blocoSaida(a.saida):""}</div>

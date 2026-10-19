@@ -329,6 +329,28 @@ async function salvarTrocaPasto(){
   fechaPeriodo(destino);destino.status="Ocupado";destino.loteId=loteId;await put("pastos",destino);
   fechar();alert("Troca de pasto registrada.");recarregarTelaAtual();
 }
+/* Histórico de pasto de um lote (V177): períodos [{pastoId, ini, fim}] em datas "aaaa-mm-dd"
+   (fim null = ocupando até hoje), montados a partir do histórico de cada pasto (salvarTrocaPasto). */
+function periodosPastoDoLote(loteId,pastos){
+  const per=[];
+  for(const p of pastos){
+    for(const h of p.historico||[])if(h.status==="Ocupado"&&h.loteId===loteId&&h.inicio!=null)
+      per.push({pastoId:p.id,ini:tsData(h.inicio),fim:h.fim!=null?tsData(h.fim):null});
+    if(p.status==="Ocupado"&&p.loteId===loteId)
+      per.push({pastoId:p.id,ini:tsData(p.statusDesde!=null?p.statusDesde:(p.criadoEm||Date.now())),fim:null});
+  }
+  return per.sort((x,y)=>String(x.ini).localeCompare(String(y.ini)));
+}
+// Pastos por onde o animal passou: cruza os períodos em cada lote com os pastos de cada lote.
+// Retorna [{loteId, ini, fim, pastos:[{pastoId, ini, fim}]}].
+function caminhoDoAnimal(a,eventos,lotes,pastos){
+  return historicoLotesAnimal(a,eventos,lotes).map(pl=>{
+    const dentro=periodosPastoDoLote(pl.loteId,pastos).map(pp=>({pastoId:pp.pastoId,
+      ini:!pl.ini||pp.ini>pl.ini?pp.ini:pl.ini,fim:pl.fim&&(!pp.fim||pp.fim>pl.fim)?pl.fim:pp.fim}))
+      .filter(pp=>!pp.fim||!pp.ini||pp.ini<pp.fim);
+    return {...pl,pastos:dentro};
+  });
+}
 async function excluirPastoLista(id){
   const pt=await get("pastos",id);
   if(!confirm(`Apagar o pasto "${pt?pt.nome:""}"?`))return;

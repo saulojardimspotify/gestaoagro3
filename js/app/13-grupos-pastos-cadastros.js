@@ -225,7 +225,8 @@ async function formNovoAnimal(loteFixo,nascimento){
     ${campoRaca("a","",true)}
     ${toggle}
     <div id="grp_nasc" style="display:${nascimento?"block":"none"}">
-      <label>Data de nascimento</label><input id="a_nasc" type="date" value="${hoje()}">
+      <label>Data de nascimento</label><input id="a_nasc" type="date" value="${hoje()}" max="${hoje()}">
+      <label>Peso ao nascer (kg) — opcional</label><input id="a_pesonasc" inputmode="decimal" placeholder="Ex: 32 — usado no GMD">
       <label>Mãe (opcional)</label><select id="a_mae">${optMae}</select>
     </div>
     <div id="grp_compra" style="display:${nascimento?"none":"block"}">
@@ -250,11 +251,13 @@ async function salvarAnimal(nascimento){
   if(!val("a_lote"))return alert("Selecione o lote do animal.");
   const _rc=lerRaca("a",true);if(_rc.erro)return alert(_rc.erro);
   if(nasceu&&val("a_nasc")>hoje())return alert("A data de nascimento não pode ser no futuro.");
+  if(nasceu&&numBR("a_pesonasc")!=null&&!(numBR("a_pesonasc")>0))return alert("O peso ao nascer precisa ser maior que zero (ou deixe em branco).");
   if(brinco && await brincoEmUso(brinco))return alert(`Já existe um animal com o brinco / identificação "${brinco}". Cada animal deve ter uma identificação única.`);
   const a={id:uid(),codigo:await proximoCodigo(),
     brinco,nome:val("a_nome"),sexo:val("a_sexo"),raca:_rc.raca,
     nascidoNaPropriedade:!!nasceu,
     dataNascimento: nasceu ? val("a_nasc") : "",
+    pesoNascimentoKg: nasceu ? (numBR("a_pesonasc")||null) : null,
     pesoCompraKg: nasceu ? null : numBR("a_pesocompra"),
     custoEstoque: nasceu ? CUSTO_BEZERRO : (numBR("a_precocompra")||0),
     maeId,marcaId,loteAtualId:val("a_lote"),status:"Ativo",foto:_animalFoto||"",criadoEm:Date.now()};
@@ -380,7 +383,8 @@ async function formEditarAnimal(id){
       <option value="sim" ${nasceu?"selected":""}>Sim — nasceu aqui</option>
       <option value="nao" ${!nasceu?"selected":""}>Não — comprado</option></select>
     <div id="grp_nasc_e" style="display:${nasceu?"block":"none"}">
-      <label>Data de nascimento</label><input id="e_nasc" type="date" value="${a.dataNascimento||hoje()}">
+      <label>Data de nascimento</label><input id="e_nasc" type="date" value="${a.dataNascimento||hoje()}" max="${hoje()}">
+      <label>Peso ao nascer (kg) — opcional</label><input id="e_pesonasc" inputmode="decimal" value="${a.pesoNascimentoKg!=null?String(a.pesoNascimentoKg).replace('.',','):""}" placeholder="Ex: 32">
       <label>Mãe (opcional)</label><select id="e_mae">${optMae}</select>
     </div>
     <div id="grp_compra_e" style="display:${nasceu?"none":"block"}">
@@ -409,6 +413,8 @@ async function salvarEdicaoAnimal(id){
   a.raca=_rc.raca;
   a.nascidoNaPropriedade=nasceu;
   a.dataNascimento = nasceu ? val("e_nasc") : "";
+  if(nasceu&&numBR("e_pesonasc")!=null&&!(numBR("e_pesonasc")>0))return alert("O peso ao nascer precisa ser maior que zero (ou deixe em branco).");
+  a.pesoNascimentoKg = nasceu ? (numBR("e_pesonasc")||null) : null;
   a.pesoCompraKg = nasceu ? null : numBR("e_pesocompra");
   if(!nasceu){const dc=val("e_datacompra");if(dc>hoje())return alert("A data da compra não pode ser no futuro.");if(dc)a.dataCompra=dc;}
   if(nasceu&&val("e_nasc")>hoje())return alert("A data de nascimento não pode ser no futuro.");
@@ -431,6 +437,9 @@ async function formMover(id){const _ab=await get("animais",id);if(_ab&&_ab.statu
   const opt=`<option value="">— selecione —</option>`+outros.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);
     return`<option value="${l.id}">${esc(l.nome)}${p?` — ${esc(p.nome)}`:""}</option>`;}).join("");
   abrir(`<h2>Mover de lote</h2><label>Novo lote</label><select id="mv_lote">${opt}</select>
+    <label>Data da troca</label><input id="mv_data" type="date" value="${hoje()}" max="${hoje()}">
     <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
       <button class="btn" onclick="confMover('${id}')">Mover</button></div>`);}
-async function confMover(id){if(!val("mv_lote"))return alert("Selecione o novo lote.");await moverAnimal(id,val("mv_lote"));fechar();verAnimal(id);}
+async function confMover(id){if(!val("mv_lote"))return alert("Selecione o novo lote.");
+  const data=val("mv_data")||hoje();if(data>hoje())return alert("A data da troca não pode ser no futuro.");
+  await moverAnimal(id,val("mv_lote"),data);fechar();verAnimal(id);}

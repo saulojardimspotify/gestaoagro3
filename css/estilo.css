@@ -455,6 +455,10 @@
   /* Histórico de peso (V169) */
   .an-peso-item{padding:10px 0;border-bottom:1px solid var(--linha);}
   .an-peso-cab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14.5px;}
+  /* Por onde passou (V177): lotes e pastos do animal */
+  .an-caminho{padding:10px 0;border-bottom:1px solid var(--linha);}
+  .an-caminho:last-of-type{border-bottom:0;}
+  .an-caminho-pasto{font-size:13.5px;margin:4px 0 0 14px;padding-left:10px;border-left:2px solid var(--linha);}
   .an-peso-per{display:flex;justify-content:space-between;gap:8px;margin-top:4px;font-size:12.5px;color:var(--muted);}
   .an-peso-per b{color:var(--verde-esc);}
   /* Foto no cadastro do item de estoque (V170) */

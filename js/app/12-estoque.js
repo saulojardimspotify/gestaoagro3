@@ -337,24 +337,41 @@ async function excluirMovInsumo(movId){
   const m=await get("insumo_mov",movId); if(!m){telaEstoque();return;}
   if(m.aplicacaoId)return alert("Este consumo veio de uma aplicação de medicamento. Para desfazer, exclua a aplicação no histórico de manejo (Manejo › Histórico) ou na ficha do animal: o estoque e o custo voltam sozinhos.");
   if(!confirm("Excluir este movimento? O saldo e o custo médio serão recalculados."))return;
-  if(m.tipo==="consumo"){
-    const lancs=(await getAll("lancamentos")).filter(l=>l.origem==="consumo_insumo"&&l.refId===movId);
-    for(const l of lancs)await del("lancamentos",l.id);
-  }
-  await del("insumo_mov",movId);
-  await reconstruirInsumo(m.insumoId);
+  await reconstruirInsumo(m.insumoId,async()=>{
+    if(m.tipo==="consumo"){
+      const lancs=(await getAll("lancamentos")).filter(l=>l.origem==="consumo_insumo"&&l.refId===movId);
+      for(const l of lancs)await del("lancamentos",l.id);
+    }
+    await del("insumo_mov",movId);
+  });
   telaEstoque();
 }
-async function reconstruirInsumo(insumoId){
-  const it=await get("insumos",insumoId); if(!it)return;
-  const movs=(await getAll("insumo_mov")).filter(m=>m.insumoId===insumoId)
-    .sort((a,b)=>(a.data||"").localeCompare(b.data||"")||(a.criadoEm||0)-(b.criadoEm||0));
-  let saldo=0, custo=0;
-  for(const m of movs){
-    if(m.tipo==="entrada"){const ns=saldo+(m.qtd||0);custo=ns>0?((saldo*custo)+(m.valorTotal||0))/ns:0;saldo=ns;}
-    else{saldo=Math.max(0,saldo-(m.qtd||0));}
+/* Saldo e custo médio a partir dos movimentos (V177).
+   Os movimentos são somados em ordem de data sem "travar" o saldo em zero no meio do caminho:
+   uma aplicação lançada com data anterior à compra continua contando. O custo médio só muda nas entradas. */
+function calcularSaldoInsumo(movs){
+  const ord=movs.slice().sort((a,b)=>(a.data||"").localeCompare(b.data||"")||(a.criadoEm||0)-(b.criadoEm||0));
+  let saldo=0,custo=0,temEntrada=false;
+  for(const m of ord){
+    const q=Number(m.qtd)||0;
+    if(m.tipo==="entrada"){const base=Math.max(saldo,0),ns=base+q;custo=ns>0?((base*custo)+(Number(m.valorTotal)||0))/ns:custo;saldo+=q;temEntrada=true;}
+    else saldo-=q;
   }
-  it.saldo=saldo; it.custoMedio=custo; await put("insumos",it);
+  return {saldo,custo,temEntrada};
+}
+/* Recalcula saldo e custo médio do item depois de uma mudança nos movimentos.
+   "alteracao" (opcional) é a mudança em si (apagar/ajustar movimento): o saldo que o item tinha sem
+   movimento que o explique (itens antigos ou migrados, sem entrada registrada) é mantido. */
+async function reconstruirInsumo(insumoId,alteracao){
+  const movsDoItem=async()=>(await getAll("insumo_mov")).filter(m=>m.insumoId===insumoId);
+  const it0=await get("insumos",insumoId);
+  const semMovimento=it0?(Number(it0.saldo)||0)-calcularSaldoInsumo(await movsDoItem()).saldo:0;
+  if(alteracao)await alteracao();
+  const it=await get("insumos",insumoId); if(!it)return;
+  const r=calcularSaldoInsumo(await movsDoItem());
+  it.saldo=Math.max(0,r.saldo+(Math.abs(semMovimento)>1e-9?semMovimento:0));
+  if(r.temEntrada)it.custoMedio=r.custo;
+  await put("insumos",it);
 }
 
 async function finConfig(){

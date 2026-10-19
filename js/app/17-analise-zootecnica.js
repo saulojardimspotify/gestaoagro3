@@ -219,6 +219,7 @@ async function analiseAnimal(id){
   topoPagina();
   const a=await get("animais",id);if(!a)return telaAnaliseIndividual();
   const eventos=await getAll("eventos"),animais=await getAll("animais"),dc=await dadosCustos();
+  const [lotes,pastos,propriedades]=await Promise.all(["lotes","pastos","propriedades"].map(n=>getAll(n)));
   const des=new Map(animais.map(x=>[x.id,desempenhoAnimal(x,eventos)]));
   const d=des.get(id),c=custosPorAnimal(animais,eventos,dc).get(id)||{total:0,itens:[]};
   const linha=(rot,v,sub="")=>`<div class="an-linha"><span>${rot}</span><b>${v}</b>${sub?`<small>${sub}</small>`:""}</div>`;
@@ -253,12 +254,28 @@ async function analiseAnimal(id){
       ${d.margem!=null?linha("Margem − custos",`<span class="${d.margem-c.total<0?"neg":""}">${moeda(d.margem-c.total)}</span>`):""}
       ${d.avisos.length?`<div class="eq-aviso" style="margin-top:12px">${d.avisos.map(esc).join("<br>")}</div>`:""}
     </div>
+    ${cartaoCaminhoAnimal(a,eventos,lotes,pastos,propriedades)}
     ${d.status==="Ativo"?`<div class="card"><div class="ti">Registrar pesagem</div>
       <div class="meta">O peso fica no histórico do animal e passa a ser usado no GMD.</div>
       <div class="lado"><div style="flex:1"><label>Peso (kg)</label><input id="an_peso" inputmode="decimal" placeholder="Ex: 320"></div>
         <div style="flex:1"><label>Data</label><input id="an_data" type="date" value="${hoje()}" max="${hoje()}"></div></div>
       <button class="btn" style="margin-top:14px" onclick="salvarPesagemAnalise('${a.id}')">Salvar pesagem</button></div>`:""}
 `;
+}
+// Lotes e pastos por onde o animal passou, com as datas (V177).
+function cartaoCaminhoAnimal(a,eventos,lotes,pastos,propriedades){
+  const cam=caminhoDoAnimal(a,eventos,lotes,pastos);if(!cam.length)return "";
+  const nomeL=id=>(lotes.find(l=>l.id===id)||{}).nome||"Lote apagado",nomeP=id=>(pastos.find(p=>p.id===id)||{}).nome||"Pasto apagado";
+  const propL=id=>{const l=lotes.find(x=>x.id===id);return l?((propriedades.find(p=>p.id===l.propriedadeId)||{}).nome||""):"";};
+  const fim=a.status!=="Ativo"?(a.status==="Vendido"?"venda":"morte"):"hoje";
+  const periodo=(i,f)=>`${i?fmt(i):"entrada"} a ${f?fmt(f):fim}${i?` · ${diasEMeses(diasEntreDatas(i,f||(a.saida&&a.status!=="Ativo"?a.saida.data:hoje())))}`:""}`;
+  const itens=cam.slice().reverse().map(c=>`<div class="an-caminho">
+      <div class="an-peso-cab"><div><b>▦ ${esc(nomeL(c.loteId))}</b>${propriedades.length>1&&propL(c.loteId)?` <span class="meta">· ${esc(propL(c.loteId))}</span>`:""}</div></div>
+      <div class="meta">${periodo(c.ini,c.fim)}</div>
+      ${c.pastos.length?c.pastos.slice().reverse().map(p=>`<div class="an-caminho-pasto">Pasto <b>${esc(nomeP(p.pastoId))}</b> · ${fmt(p.ini)} a ${p.fim?fmt(p.fim):fim}</div>`).join(""):`<div class="an-caminho-pasto meta">Sem pasto registrado para o lote nesse período</div>`}
+    </div>`).join("");
+  return `<div class="card"><div class="h3" style="margin-top:0">Por onde passou</div>${itens}
+    <div class="meta" style="margin-top:8px">Lotes pelas trocas de lote do histórico; pastos pelas trocas de pasto de cada lote.</div></div>`;
 }
 async function salvarPesagemAnalise(id){
   const kg=numeroBR(val("an_peso"));
@@ -270,7 +287,9 @@ async function salvarPesagemAnalise(id){
 }
 
 /* ======================= ANÁLISE POR PROPRIEDADE (V171) =======================
-   Cada animal conta na propriedade do seu lote atual (ou do último lote, se já saiu).
+   V177: cada animal conta na propriedade do lote em que ESTAVA em cada data (histórico de trocas de
+   lote, historicoLotesAnimal em 08). Lotação de hoje usa o lote atual; peso ganho, mortes, partos e
+   fêmeas do período ficam na propriedade onde o animal estava quando aconteceram.
    - Área = soma da área (ha) dos pastos cadastrados na propriedade.
    - Peso estimado numa data: entre dois pesos conhecidos (entrada, pesagens, venda) é proporcional ao
      tempo; depois do último peso soma o GMD do próprio animal (ou o GMD médio do rebanho).
@@ -310,10 +329,14 @@ function indicadoresPropriedades(dados,jan){
   const propDoLote=id=>(lotes.find(l=>l.id===id)||{}).propriedadeId||null;
   const saidaDe=a=>a.status!=="Ativo"&&a.saida?a.saida.data:null;
   const entradaDe=a=>des.get(a.id).dataIni;
+  const historicoLotes=new Map(animais.map(a=>[a.id,historicoLotesAnimal(a,eventos,lotes)]));
   const linhas=[...propriedades.map(p=>({id:p.id,nome:p.nome})),{id:"__todas",nome:"Todas as propriedades"}];
   return linhas.map(pr=>{
     const todas=pr.id==="__todas";
     const meus=animais.filter(a=>todas?true:propDoLote(a.loteAtualId)===pr.id);
+    // Trechos de tempo de cada animal nesta propriedade (pelo histórico de lotes).
+    const trechos=a=>{const per=historicoLotes.get(a.id);
+      return todas?[{ini:entradaDe(a)||null,fim:saidaDe(a)}]:per.filter(p=>propDoLote(p.loteId)===pr.id);};
     const area=pastos.filter(pt=>todas?true:pt.propriedadeId===pr.id).reduce((s,pt)=>s+(Number(pt.areaHa)||0),0);
     const ativos=meus.filter(a=>a.status==="Ativo");
     // lotação hoje
@@ -324,16 +347,20 @@ function indicadoresPropriedades(dados,jan){
     const ua=(kgHoje+semPeso*kgMedio)/UA_KG;
     // no período
     let ganhoKg=0,noPeriodo=0,mortes=0,femeas=0,partos=0;
-    for(const a of meus){
-      const ent=entradaDe(a)||jan.ini,sai=saidaDe(a)||jan.fim;
-      const ini=ent>jan.ini?ent:jan.ini,fim=sai<jan.fim?sai:jan.fim;
-      if(fim<ini)continue;
+    for(const a of animais){
+      const pts=pontosDePeso(a,eventos);let esteve=false;
+      for(const t of trechos(a)){
+        const ini=t.ini&&t.ini>jan.ini?t.ini:jan.ini,fim=t.fim&&t.fim<jan.fim?t.fim:jan.fim;
+        if(fim<ini)continue;
+        esteve=true;
+        if(pts.length){const p0=pesoNaData(pts,ini,gmdRebanho),p1=pesoNaData(pts,fim,gmdRebanho);if(p0!=null&&p1!=null&&p1>p0)ganhoKg+=p1-p0;}
+      }
+      if(!esteve)continue;
       noPeriodo++;
-      const pts=pontosDePeso(a,eventos);
-      if(pts.length){const p0=pesoNaData(pts,ini,gmdRebanho),p1=pesoNaData(pts,fim,gmdRebanho);if(p0!=null&&p1!=null&&p1>p0)ganhoKg+=p1-p0;}
-      if(a.status==="Morto"&&a.saida&&a.saida.data>=jan.ini&&a.saida.data<=jan.fim)mortes++;
+      const per=historicoLotes.get(a.id),ultimo=per[per.length-1],primeiro=per[0];
+      if(a.status==="Morto"&&a.saida&&a.saida.data>=jan.ini&&a.saida.data<=jan.fim&&(todas||propDoLote(ultimo.loteId)===pr.id))mortes++;
       const nascidoNoPeriodo=a.nascidoNaPropriedade===true&&a.dataNascimento&&a.dataNascimento>=jan.ini&&a.dataNascimento<=jan.fim;
-      if(nascidoNoPeriodo)partos++;
+      if(nascidoNoPeriodo){if(todas||propDoLote(primeiro.loteId)===pr.id)partos++;}
       else if(a.sexo==="F")femeas++;
     }
     const anos=Math.max(diasEntreDatas(jan.ini,jan.fim),1)/365;
@@ -375,7 +402,7 @@ async function telaAnalisePropriedade(){
     <div class="pr-legenda"><span class="sinal-verde"><i></i>até 6,5</span><span class="sinal-amarelo"><i></i>6,6 a 7,5</span><span class="sinal-vermelho"><i></i>7,6 a 10</span><span class="sinal-vermelho-forte"><i></i>acima de 10</span><small>Sinal da lotação, em animais por alqueire (1 alqueire = 4,84 ha)</small></div>
     ${res.filter(r=>!r.todas).map(card).join("")}
     ${propriedades.length>1?card(res.find(r=>r.todas)):""}
-    <div class="calc-formula"><b>Como é calculado:</b> 1 alqueire = 4,84 ha. Cada animal conta na propriedade do seu lote. Área = soma da área dos pastos.
+    <div class="calc-formula"><b>Como é calculado:</b> 1 alqueire = 4,84 ha. Cada animal conta na propriedade do lote em que estava em cada data (trocas de lote do histórico). Área = soma da área dos pastos.
       <b>Lotação</b> = animais ativos ÷ alqueires (o sinal de cor usa esse número); em UA = peso estimado de hoje ÷ 450 kg ÷ alqueires (animal sem peso entra com o peso médio). <b>@ produzidas</b> = peso ganho no período ÷ 30 (carcaça com 50% de rendimento), por alqueire e por ano.
       O peso de cada data é estimado entre a entrada, as pesagens e a venda; depois da última pesagem soma o GMD do animal (ou o médio do rebanho) — quanto mais pesagens, mais preciso.
       <b>Mortalidade</b> = mortes ÷ animais que passaram pelo rebanho no período. <b>Prenhezes indesejadas</b> = partos na propriedade ÷ fêmeas no período (como só entram bezerras compradas, todo parto é prenhez ocorrida na propriedade).</div>`;

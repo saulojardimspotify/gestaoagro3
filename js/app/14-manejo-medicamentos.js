@@ -265,6 +265,9 @@ async function salvarAplicacao(){
   const un=it.unidade||"un",total=dose*ids.length,saldo=it.saldo||0;
   if(saldo<=0)return alert(`Não há ${it.nome} no estoque. Registre a entrada (compra) no Estoque de Insumos antes de aplicar.`);
   if(total>saldo+1e-9)return alert(`Estoque insuficiente de ${it.nome}: a aplicação precisa de ${numFmt(total)} ${un} e o saldo é ${numFmt(saldo)} ${un}. Registre uma entrada no Estoque de Insumos ou diminua a quantidade de animais.`);
+  // V177: aplicação com data anterior à primeira compra do item costuma ser data errada — confirma antes
+  const entradas=(await getAll("insumo_mov")).filter(m=>m.insumoId===it.id&&m.tipo==="entrada"&&m.data).map(m=>m.data).sort();
+  if(entradas.length&&data<entradas[0]&&!confirm(`A data da aplicação (${fmt(data)}) é anterior à primeira entrada de ${it.nome} no estoque (${fmt(entradas[0])}).\n\nRegistrar assim mesmo? Se a compra foi antes, corrija a data da entrada no Estoque.`))return;
   let prox=null;
   if(val("ap_prox")==="sim"){
     const dp=val("ap_prox_data");
@@ -326,23 +329,24 @@ async function ajustarAplicacaoAposExclusao(aplicacaoId){
     const mov=(await getAll("insumo_mov")).find(m=>m.aplicacaoId===aplicacaoId);if(!mov)return;
     const lanc=(await getAll("lancamentos")).find(l=>l.origem==="consumo_insumo"&&l.refId===mov.id);
     const avs=(await getAll("avisos")).filter(a=>a.origemAplicacaoId===aplicacaoId&&!a.feito);
-    if(!restantes.length){
-      if(lanc)await del("lancamentos",lanc.id);
-      await del("insumo_mov",mov.id);
-      for(const a of avs)await del("avisos",a.id); // V145: sem aplicação, sem lembrete de reforço
-    }else{
-      for(const a of avs){const ok=(a.animalIds||[]).filter(id=>restantes.some(e=>e.animalId===id));
-        if(!ok.length)await del("avisos",a.id);else if(ok.length!==(a.animalIds||[]).length){a.animalIds=ok;a.detalhe=a.detalhe.replace(/\d+ animal\(is\)$/,`${ok.length} animal(is)`);await put("avisos",a);}}
-      const novaQtd=restantes.reduce((s,e)=>s+(Number(e.doseQtd)||0),0);
-      const fator=mov.qtd>0?novaQtd/mov.qtd:0;
-      mov.qtd=novaQtd;mov.obs=`Aplicação em ${restantes.length} animal(is)`;await put("insumo_mov",mov);
-      if(lanc){lanc.valor=novaQtd*(mov.custoUnit||0);
-        if(lanc.rateioLotes)for(const k in lanc.rateioLotes)lanc.rateioLotes[k]*=fator;
-        if(lanc.apropriacaoIds)lanc.apropriacaoIds=lanc.apropriacaoIds.filter(id=>restantes.some(e=>e.animalId===id));
-        lanc.descricao=lanc.descricao.replace(/\(([\d.,]+) ([^)]*)\) · \d+ animal\(is\)/,`(${numFmt(novaQtd)} $2) · ${restantes.length} animal(is)`);
-        await put("lancamentos",lanc);}
-    }
-    await reconstruirInsumo(mov.insumoId);
+    await reconstruirInsumo(mov.insumoId,async()=>{
+      if(!restantes.length){
+        if(lanc)await del("lancamentos",lanc.id);
+        await del("insumo_mov",mov.id);
+        for(const a of avs)await del("avisos",a.id); // V145: sem aplicação, sem lembrete de reforço
+      }else{
+        for(const a of avs){const ok=(a.animalIds||[]).filter(id=>restantes.some(e=>e.animalId===id));
+          if(!ok.length)await del("avisos",a.id);else if(ok.length!==(a.animalIds||[]).length){a.animalIds=ok;a.detalhe=a.detalhe.replace(/\d+ animal\(is\)$/,`${ok.length} animal(is)`);await put("avisos",a);}}
+        const novaQtd=restantes.reduce((s,e)=>s+(Number(e.doseQtd)||0),0);
+        const fator=mov.qtd>0?novaQtd/mov.qtd:0;
+        mov.qtd=novaQtd;mov.obs=`Aplicação em ${restantes.length} animal(is)`;await put("insumo_mov",mov);
+        if(lanc){lanc.valor=novaQtd*(mov.custoUnit||0);
+          if(lanc.rateioLotes)for(const k in lanc.rateioLotes)lanc.rateioLotes[k]*=fator;
+          if(lanc.apropriacaoIds)lanc.apropriacaoIds=lanc.apropriacaoIds.filter(id=>restantes.some(e=>e.animalId===id));
+          lanc.descricao=lanc.descricao.replace(/\(([\d.,]+) ([^)]*)\) · \d+ animal\(is\)/,`(${numFmt(novaQtd)} $2) · ${restantes.length} animal(is)`);
+          await put("lancamentos",lanc);}
+      }
+    });
   }catch(e){console.error("Ajuste da aplicação V144:",e);}
   finally{_ajustandoAplicacao=false;}
 }
@@ -417,12 +421,7 @@ async function salvarTrocaMultipla(){
   const nomeDest=nomeLote(destino);
   let movidos=0,jaEstavam=0;
   for(const id of ids){
-    const a=await get("animais",id);if(!a)continue;
-    if(a.loteAtualId===destino){jaEstavam++;continue;}
-    const de=nomeLote(a.loteAtualId);
-    a.loteAtualId=destino;await put("animais",a);
-    await registrarEvento(id,"Movimentação",data,`De "${de}" para "${nomeDest}"`,{hora});
-    movidos++;
+    if(await moverAnimal(id,destino,data,hora,lotes))movidos++;else jaEstavam++;
   }
   if(!movidos)return alert("Os animais selecionados já pertencem ao lote de destino.");
   alert(`${movidos} animal(is) movido(s) para ${nomeDest}.${jaEstavam?` ${jaEstavam} já estava(m) nesse lote.`:""}`);
@@ -550,15 +549,7 @@ async function salvarManejo(tipo){
     const destino=val("mj_destino");
     if(!destino)return alert("Selecione o lote de destino.");
     const lotes=await getAll("lotes");
-    const nomeLote=id=>(lotes.find(l=>l.id===id)||{}).nome||"—";
-    const nomeDest=nomeLote(destino);
-    for(const id of lista){
-      const a=await get("animais",id);
-      if(a.loteAtualId===destino)continue;
-      const de=nomeLote(a.loteAtualId);
-      a.loteAtualId=destino;await put("animais",a);
-      await registrarEvento(id,"Movimentação",data,`De "${de}" para "${nomeDest}"`,{hora});n++;
-    }
+    for(const id of lista)if(await moverAnimal(id,destino,data,hora,lotes))n++;
     if(!n){fechar();return alert("Os animais já estão nesse lote.");}
   }else if(tipo==="Marcação"){
     const obs=val("mj_obs");
