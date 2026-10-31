@@ -184,10 +184,10 @@ async function atalhoEstoque(){
   const grupo=(g,t)=>{const arr=itens.filter(i=>(i.grupo||"gado")===g);return arr.length?`<optgroup label="${t}">${arr.map(i=>`<option value="${i.id}">${esc(i.nome)} — saldo ${numFmt(i.saldo||0)} ${esc(i.unidade||"un")}</option>`).join("")}</optgroup>`:"";};
   abrir(`<h2>Entrada no estoque</h2>
     <div class="meta" style="margin-bottom:6px">Medicamentos, sal, arame, estacas e outros itens.</div>
-    ${itens.length?`<label>Item *</label><select id="ae_item"><option value="">— selecione —</option>${grupo("gado","Insumos do gado")}${grupo("manutencao","Manutenção da propriedade")}</select>
+    ${itens.length?`<label>Item *</label><select id="ae_item"><option value="">— selecione —</option>${grupo("gado",NOME_GRUPO_INSUMO.gado)}${grupo("manutencao",NOME_GRUPO_INSUMO.manutencao)}</select>
     <button class="btn" style="margin-top:16px" onclick="if(!val('ae_item'))return alert('Selecione o item.');formEntradaInsumo(val('ae_item'))">Continuar</button>`
     :`<div class="meta" style="margin:8px 0">Ainda não há itens cadastrados no estoque.</div>`}
-    <div class="lado" style="margin-top:10px"><button class="btn btn-sec" onclick="formNovoInsumo('gado')">+ Item do gado</button>
+    <div class="lado" style="margin-top:10px"><button class="btn btn-sec" onclick="formNovoInsumo('gado')">+ Item para animais</button>
       <button class="btn btn-sec" onclick="formNovoInsumo('manutencao')">+ Item de manutenção</button></div>
     <button class="btn-fant" style="margin-top:6px" onclick="fechar()">Cancelar</button>`);
 }

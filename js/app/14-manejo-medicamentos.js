@@ -647,7 +647,7 @@ async function excluirGrupoManejo(tipo,idsCsv){
 }
 
 /* ---------- Cadastro de medicamentos ----------
-   V142: o cadastro de medicamentos agora é feito no Estoque de Insumos (grupo "Insumos do gado").
+   V142: o cadastro de medicamentos agora é feito no Estoque de Insumos (grupo "Insumo para animais").
    As funções antigas levam para lá, para nenhum botão antigo ficar sem destino. */
 async function gerenciarMedicamentos(){fechar();aba="painel";marcarNav("painel");telaEstoque();}
 async function formEditarMedicamento(id){if(await get("insumos",id))return formNovoInsumo(null,id);gerenciarMedicamentos();}

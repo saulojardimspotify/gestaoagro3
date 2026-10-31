@@ -9,7 +9,7 @@ const numFmt=n=>Number(n||0).toLocaleString('pt-BR',{maximumFractionDigits:3});
 
 /* ---------- Página do Estoque (V173): busca, filtros e lista compacta ---------- */
 let _estFiltro="todos",_estOrdem="nome",_estHistAberto=false;
-const FILTROS_ESTOQUE=[["todos","Todos"],["med","Remédios e vacinas"],["gado","Insumos do gado"],["manutencao","Manutenção"],["zerado","Sem saldo"]];
+const FILTROS_ESTOQUE=[["todos","Todos"],["med","Remédios e vacinas"],["gado",NOME_GRUPO_INSUMO.gado],["manutencao","Manutenção"],["zerado","Sem saldo"]];
 // Texto normalizado para busca e para achar itens repetidos: sem acento, minúsculo, só letras e números.
 const normalizarNome=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9%]+/g," ").trim();
 // Chave para achar repetidos: ignora também os espaços ("Ivermectina 4 %" = "ivermectina 4%").
@@ -71,7 +71,7 @@ function filtrarEstoque(){
 function escolherGrupoNovoInsumo(){
   abrir(`<h2>Novo item no estoque</h2><div class="meta" style="margin-bottom:10px">Que tipo de item é?</div>
     <div class="sheet-item rt" onclick="formNovoInsumo('gado','', 'Medicamento')"><span class="si" data-ico="seringa"></span><div><b>Remédio ou vacina</b><div class="meta">Medicamentos, vacinas, vermífugos, hormônios</div></div></div>
-    <div class="sheet-item rt" onclick="formNovoInsumo('gado','', 'Sal mineral')"><span class="si" data-ico="boi"></span><div><b>Outro insumo do gado</b><div class="meta">Sal mineral, suplemento, ração</div></div></div>
+    <div class="sheet-item rt" onclick="formNovoInsumo('gado','', 'Sal mineral')"><span class="si" data-ico="boi"></span><div><b>Outro insumo para animais</b><div class="meta">Sal mineral, suplemento, ração</div></div></div>
     <div class="sheet-item rt" onclick="formNovoInsumo('manutencao')"><span class="si" data-ico="cerca"></span><div><b>Manutenção da propriedade</b><div class="meta">Arame, estaca, combustível, herbicida, peças</div></div></div>
     <button class="btn btn-sec" style="margin-top:14px" onclick="fechar()">Cancelar</button>`);
 }
@@ -133,7 +133,7 @@ async function formNovoInsumo(grupo,editId,catPadrao){
       <div><b>Foto do item</b><div class="meta">Toque para ${_insumoFoto?"trocar a":"tirar ou escolher uma"} foto (opcional).</div></div>
       <input type="file" id="in_foto_arq" accept="image/*" style="display:none" onchange="escolherFotoNovoInsumo(this)">
     </div>
-    <label>Grupo</label><input value="${g==="manutencao"?"Manutenção da propriedade":"Insumos do gado"}" disabled>
+    <label>Grupo</label><input value="${NOME_GRUPO_INSUMO[g]||NOME_GRUPO_INSUMO.gado}" disabled>
     <input type="hidden" id="in_grupo" value="${g}">
     <label>Categoria</label><select id="in_cat" onchange="trocarCategoriaInsumo(${ed?"true":"false"})">${optCat}</select>
     <label>Nome *</label><input id="in_nome" value="${ed?esc(ed.nome||""):""}" placeholder="${esc(exemplo)}" oninput="avisarInsumoRepetido(${ed?`'${ed.id}'`:""})" autocomplete="off">

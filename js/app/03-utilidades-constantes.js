@@ -92,11 +92,13 @@ const CAT_INSUMO_GADO=["Medicamento","Vacina","Sal mineral","Suplemento","Vitami
 const CAT_INSUMO_MANUT=["Cerca (arame/estaca)","Combustível","Óleo/lubrificante","Ferramenta/peça","Material de construção","Outro"];
 const UNID_INSUMO=["un","kg","g","L","mL","m","saco","dose","frasco","pacote"];
 // Categoria de despesa gerada no consumo, conforme o grupo do insumo
+// V180: nome dos grupos do estoque na tela ("gado" vale para gado e animais de serviço)
+const NOME_GRUPO_INSUMO={gado:"Insumo para animais",manutencao:"Manutenção da propriedade"};
 const DESPESA_DE_INSUMO={gado:"Sanidade (vacina/remédio)",manutencao:"Manutenção (cerca/máquina)"};
 const MESES_ABREV=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 const TIPOS_MED=["Vacina","Antibiótico","Vermífugo","Anti-inflamatório","Carrapaticida/Mosquicida","Vitamina/Mineral","Hormônio","Outro"];
 const optTipoMed=sel=>TIPOS_MED.map(t=>`<option value="${t}" ${t===sel?"selected":""}>${t}</option>`).join("");
-/* V142: medicamentos e vacinas passam a ser itens do Estoque de Insumos (grupo "Insumos do gado") */
+/* V142: medicamentos e vacinas passam a ser itens do Estoque de Insumos (grupo "gado" = "Insumo para animais") */
 const CAT_MED_ESTOQUE=["Medicamento","Vacina","Vermífugo","Vitamina","Hormônio"];
 const TIPOS_MEDICAMENTO=["Antibiótico","Anti-inflamatório","Carrapaticida/Mosquicida","Outro"];
 const ehMedicamentoEstoque=i=>!!i&&(i.grupo||"gado")==="gado"&&CAT_MED_ESTOQUE.includes(i.categoria);
@@ -164,7 +166,7 @@ const COW=`<svg class="cattle" viewBox="0 0 640 512" xmlns="http://www.w3.org/20
 async function tudo(){
   const [propriedades,marcas,lotes,animais,eventos,insumosTodos,pastos,grupos,grupo_animais]=await Promise.all(
     ["propriedades","marcas","lotes","animais","eventos","insumos","pastos","grupos","grupo_animais"].map(getAll));
-  // V142: medicamentos e vacinas = itens do estoque (Insumos do gado)
+  // V142: medicamentos e vacinas = itens do estoque (grupo "gado" = "Insumo para animais")
   const medicamentos=insumosTodos.filter(ehMedicamentoEstoque).sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
   _animaisPorId=new Map(animais.map(a=>[a.id,a])); // V125
   return {propriedades,marcas,lotes,animais,eventos,medicamentos,pastos,grupos,grupo_animais};
