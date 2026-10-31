@@ -46,7 +46,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 05-instalar-primeiros-passos.js | Tela "Instalar o app" e cadastro inicial obrigatório |
 | 06-inicio.js | Página inicial: pendências, atalhos, Rebanho hoje, Financeiro, nascidos |
 | 07-painel-pastos-avisos.js | Gestão Operacional (módulos), pastos (inclui "Trocar lote de pasto", usado também no atalho do Início; histórico de pasto de cada lote em `periodosPastoDoLote` e `caminhoDoAnimal`), avisos e próximas doses |
-| 08-lotes-animais.js | Lotes e Grupos, lote (com "Selecionar vários" para mover animais de lote), lista e ficha do animal; **toda troca de lote** passa por `moverAnimal()` (grava `loteDeId`/`loteParaId` no evento) e o lote de cada data sai de `historicoLotesAnimal`/`loteDoAnimalNaData`; **Animais de serviço** (cavalo, burro, cão — V178): lista, cadastro, ficha com gastos, `registrarConsumoServico`, `formGastoServico` |
+| 08-lotes-animais.js | Lotes e Grupos, lote (com "Selecionar vários" para mover ou vender os animais marcados), lista e ficha do animal; **toda troca de lote** passa por `moverAnimal()` (grava `loteDeId`/`loteParaId` no evento) e o lote de cada data sai de `historicoLotesAnimal`/`loteDoAnimalNaData`; **Animais de serviço** (cavalo, burro, cão — V178): lista, cadastro, ficha com gastos, `registrarConsumoServico`, `formGastoServico` |
 | 09-perfil-nuvem-sincronizacao.js | Perfil (aberto pela foto do topo): dados do usuário, cadastro/edição de propriedades e marcas, conta, sincronização e cópias de segurança |
 | 10-formularios.js | Janela (`abrir`/`fechar`), menu ☰, "Sobre o app" e entrada do Financeiro |
 | 11-financeiro.js | Resumo, lançamentos, relatórios e custos de produção por lote |
@@ -64,7 +64,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 |---|---|---|
 | 01-troca-lote-ajustes.js | Correções visuais da troca de lote no iPhone | (CSS e textos) |
 | 02-troca-lote.js | Fluxo guiado de troca de lote | `telaTrocaLote` e auxiliares |
-| 03-saida-animais.js | Venda/morte individual, múltipla, por lote ou grupo | `formSaida`, `blocoSaida` |
+| 03-saida-animais.js | Venda/morte individual, múltipla (escolhendo pela foto, V179), por lote ou grupo; `venderAnimaisSelecionados(ids, rótulo, lote)` abre a venda com animais já escolhidos. Visual em css/estilo.css | `formSaida`, `blocoSaida` |
 | 04-calculadora-pecuaria.js | Calculadora da Pecuária (visual em css/estilo.css): valor da negociação, ponto de equilíbrio da recria/engorda e macho ou fêmea | `telaPainel`, `telaCalculadora*`, `ptEquilibrio`, `compararMachoFemea` |
 | 05-saida-menu.js | Página Venda / Morte de Animal | `telaVendaMorteAnimal` |
 | 06-venda-financeiro.js | Cálculo único da venda (tara só nos animais informados, padrão 7,5 kg) e integração com o Financeiro | `formLancamento`, `salvarVendaV92` |

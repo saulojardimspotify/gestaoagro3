@@ -11,6 +11,7 @@ python3 testes/conferir_arquivos.py           # index.html × sw.js × disco + c
 NODE_PATH=$(npm root -g) node testes/sincronizacao_dois_aparelhos.js
 NODE_PATH=$(npm root -g) node testes/navegacao_voltar.js
 NODE_PATH=$(npm root -g) node testes/animais_servico.js
+NODE_PATH=$(npm root -g) node testes/venda_selecao_fotos.js
 ```
 
 `sincronizacao_dois_aparelhos.js` abre dois "aparelhos" com o mesmo usuário e um Supabase simulado em
@@ -23,3 +24,7 @@ busca e rolagem preservados; lote → animal; Início → Estoque → Início; e
 `animais_servico.js` (V178) confere o cavalo fora do rebanho (listas, lotação, análise), remédio do estoque
 pelo formulário de aplicação, consumo de ração, gasto manual a prazo, edição pelo Financeiro, exclusão com
 volta ao estoque e estorno, relatório por categoria e as telas sem NaN/undefined.
+
+`venda_selecao_fotos.js` (V179) confere a venda escolhendo os animais pela foto: cartões com foto, busca e
+contador em Venda › Selecionar animais, miniaturas nos dados da venda, venda direto da seleção da página do
+lote (volta para o lote), lançamentos/partidas e os outros modos de venda.

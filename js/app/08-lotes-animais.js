@@ -54,7 +54,8 @@ async function verLote(id){
     <div class="sel-barra" id="sel_barra">
       <div class="sel-info"><b id="sel_qtd">0</b> selecionado(s) · <button class="btn-fant" onclick="loteSelecionarTodos()">Todos</button></div>
       <div class="lado"><button class="btn btn-sec" onclick="loteSelecaoLigar(false)">Cancelar</button>
-        <button class="btn" onclick="formMoverSelecionados()">Mover de lote</button></div>
+        <button class="btn" onclick="formMoverSelecionados()">Mover de lote</button>
+        <button class="btn btn-perigo" onclick="venderSelecionadosLote()">Vender</button></div>
     </div>`;
   // V161: no modo "Selecionar vários", tocar no animal marca/desmarca em vez de abrir a ficha.
   document.getElementById("lote_lista").addEventListener("click",e=>{
@@ -76,6 +77,12 @@ function loteSelecaoContar(){const q=document.getElementById("sel_qtd");if(q)q.t
 function loteSelecionarTodos(){
   const cards=[...document.querySelectorAll("#lote_lista [data-id]")],todos=cards.every(c=>c.classList.contains("sel"));
   cards.forEach(c=>c.classList.toggle("sel",!todos));loteSelecaoContar();
+}
+// V179: vender os animais marcados — abre direto os dados da venda (fluxo em js/modulos/03-saida-animais.js).
+async function venderSelecionadosLote(){
+  const ids=loteSelecionados();if(!ids.length)return alert("Toque nos animais que deseja vender.");
+  const lista=document.getElementById("lote_lista"),l=await get("lotes",lista.dataset.lote);
+  return venderAnimaisSelecionados(ids,`Lote ${l?l.nome:""} · seleção`,lista.dataset.lote);
 }
 async function formMoverSelecionados(){
   const ids=loteSelecionados();if(!ids.length)return alert("Toque nos animais que deseja mover.");

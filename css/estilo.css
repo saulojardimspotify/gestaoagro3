@@ -525,3 +525,34 @@
   .in-entrada input{width:auto;margin:0;}
   @media(max-width:380px){.est-resumo{grid-template-columns:1fr 1fr;}.est-resumo>div:last-child{display:none;}}
 
+
+/* ======================= Saída de animais (venda / morte) — js/modulos/03-saida-animais.js ======================= */
+.sx-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 4px}
+.sx-op{border:1.5px solid var(--linha);border-radius:16px;padding:16px 12px;background:#fff;text-align:left;color:var(--texto);font:inherit;min-height:92px}
+.sx-op b{display:block;font-size:16px;margin-top:7px}
+.sx-op span{display:block;font-size:12px;color:var(--muted);margin-top:3px;line-height:1.25}
+.sx-resumo{background:#f3f8f4;border:1px solid #dce9df;border-radius:14px;padding:12px 14px;margin:12px 0}
+.sx-resumo b{color:var(--verde)}
+.sx-est{font-weight:700;color:var(--verde);font-size:18px;margin-top:4px}
+.sx-passos{font-size:12px;color:var(--muted);margin:-4px 0 12px}
+@media(max-width:390px){.sx-grid{grid-template-columns:1fr}.sx-op{min-height:72px}}
+/* V179: escolher os animais da venda pela foto */
+.sx-sel-topo{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:12px 2px 6px}
+.sx-sel-topo .btn-fant{padding:4px 0;color:var(--verde);font-weight:700}
+.sx-cards{display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow:auto;-webkit-overflow-scrolling:touch;padding:2px}
+.sx-card{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1.5px solid var(--linha);border-radius:14px;background:#fff;cursor:pointer;user-select:none;-webkit-user-select:none}
+.sx-card:active{transform:scale(.99)}
+.sx-card .an-thumb{flex:0 0 auto}
+.sx-card-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sx-card-txt b{font-size:15.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sx-card-txt span{font-size:13px}
+.sx-check{width:28px;height:28px;flex:0 0 28px;border-radius:50%;border:2px solid var(--linha);display:flex;align-items:center;justify-content:center;color:transparent;font-weight:800}
+.sx-card.sel{border-color:var(--verde);background:var(--verde-lite)}
+.sx-card.sel .sx-check{background:var(--verde);border-color:var(--verde);color:#fff}
+.sx-sel-barra{position:sticky;bottom:-1px;background:#fff;border-top:1px solid var(--linha);margin:10px -4px 0;padding:10px 4px 2px}
+.sx-sel-barra b{display:block;margin-bottom:2px;color:var(--verde-esc)}
+.sx-sel-barra .lado{margin-top:6px}
+.sx-fotos{display:flex;gap:8px;overflow-x:auto;margin-top:10px;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.sx-foto{flex:0 0 auto;width:54px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.sx-foto small{font-size:10.5px;color:var(--muted);max-width:54px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sx-foto-mais{height:40px;justify-content:center;font-weight:800;color:var(--verde-esc)}
