@@ -15,6 +15,8 @@ js/app/                 Núcleo do app, dividido por assunto (ver tabela abaixo)
 js/modulos/             Módulos que acrescentam ou ajustam funções do núcleo (carregados depois dele)
 desativados/            Código guardado e NÃO carregado (Engorda e pesagens — ver LEIA-ME)
 testes/                 Testes automáticos no navegador (não fazem parte do app publicado)
+.github/workflows/      manter-banco-ativo.yml: consulta o Supabase 2x por semana (seg e qui) para o plano gratuito não pausar o banco;
+                        lê endereço/chave de js/app/01-config-conta.js (cada repositório consulta o próprio banco)
 ARQUITETURA.md          Este arquivo
 CLAUDE.md               Regras de trabalho (versão, publicação, cuidados)
 ```

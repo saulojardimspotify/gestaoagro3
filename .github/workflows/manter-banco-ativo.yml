@@ -1,0 +1,43 @@
+# Gestão do Rebanho — mantém o banco do Supabase ativo.
+# No plano gratuito o Supabase pausa o projeto depois de ~7 dias sem acesso. Esta tarefa faz uma
+# consulta simples (só leitura, não grava nada) duas vezes por semana: segunda e quinta, ~6h15 de Brasília.
+# Endereço e chave são lidos de js/app/01-config-conta.js, então o mesmo arquivo serve para o app de
+# teste e para o de produção (cada um consulta o próprio banco).
+# Também dá para rodar na mão: aba Actions › "Manter banco ativo" › Run workflow.
+name: Manter banco ativo
+
+on:
+  schedule:
+    - cron: "17 9 * * 1,4"   # UTC (09:17 UTC = 06:17 em Brasília)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  consultar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: js/app/01-config-conta.js
+          sparse-checkout-cone-mode: false
+
+      - name: Consultar o banco
+        run: |
+          URL=$(grep -oP 'SUPABASE_URL="\K[^"]+' js/app/01-config-conta.js)
+          KEY=$(grep -oP 'SUPABASE_PUBLISHABLE_KEY="\K[^"]+' js/app/01-config-conta.js)
+          echo "Banco: $URL"
+          for tentativa in 1 2 3; do
+            CODIGO=$(curl -s -o resposta.txt -w "%{http_code}" --max-time 30 \
+              "$URL/rest/v1/sync_records?select=record_id&limit=1" \
+              -H "apikey: $KEY")
+            echo "Tentativa $tentativa: HTTP $CODIGO"
+            # Qualquer resposta do banco (200, ou 401/403 das regras de acesso) conta como acesso e mostra que está ativo.
+            if [ "$CODIGO" -ge 200 ] && [ "$CODIGO" -lt 500 ]; then echo "Banco ativo."; exit 0; fi
+            sleep 20
+          done
+          echo "O banco não respondeu. Se estiver pausado, entre em supabase.com e clique em Restore project."
+          cat resposta.txt || true
+          exit 1
