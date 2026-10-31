@@ -10,6 +10,7 @@ python3 -m http.server 8765 &                 # serve o app
 python3 testes/conferir_arquivos.py           # index.html × sw.js × disco + css bem formado
 NODE_PATH=$(npm root -g) node testes/sincronizacao_dois_aparelhos.js
 NODE_PATH=$(npm root -g) node testes/navegacao_voltar.js
+NODE_PATH=$(npm root -g) node testes/animais_servico.js
 ```
 
 `sincronizacao_dois_aparelhos.js` abre dois "aparelhos" com o mesmo usuário e um Supabase simulado em
@@ -18,3 +19,7 @@ edição offline mais nova (vale), criação offline, exclusão, exclusão antig
 
 `navegacao_voltar.js` confere o "‹ Voltar": grupo → animal → volta ao grupo; lista de animais com filtro,
 busca e rolagem preservados; lote → animal; Início → Estoque → Início; e sem ciclo quando não há histórico.
+
+`animais_servico.js` (V178) confere o cavalo fora do rebanho (listas, lotação, análise), remédio do estoque
+pelo formulário de aplicação, consumo de ração, gasto manual a prazo, edição pelo Financeiro, exclusão com
+volta ao estoque e estorno, relatório por categoria e as telas sem NaN/undefined.

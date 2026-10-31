@@ -245,6 +245,7 @@ async function formConsumoInsumo(id){
   if(ehMedicamentoEstoque(it))return formAplicacao({voltar:"estoque",medId:id}); // V144: remédio/vacina = aplicação
   if((it.saldo||0)<=0)return alert("Sem saldo para consumir. Registre uma entrada primeiro.");
   const {propriedades,lotes,pastos,grupos,animais}=await tudo();
+  const servicos=(await getAll("animais",{servico:true})).filter(s=>s.status!=="Inativo"); // V178
   const ativos=animais.filter(a=>a.status==="Ativo").sort((x,y)=>(x.codigo||0)-(y.codigo||0));
   const nomeLote=id=>(lotes.find(l=>l.id===id)||{}).nome||"—";
   const nomeProp=id=>(propriedades.find(p=>p.id===id)||{}).nome||"";
@@ -255,7 +256,8 @@ async function formConsumoInsumo(id){
     pasto:pastos.map(p=>({id:p.id,t:p.nome,s:[propriedades.length>1?nomeProp(p.propriedadeId):"",p.status==="Ocupado"&&p.loteId?`lote ${nomeLote(p.loteId)}`:(p.status==="Descanso"?"em descanso":"livre")].filter(Boolean).join(" · ")})),
     lote:lotes.map(l=>({id:l.id,t:l.nome,s:`${nAn(a=>a.loteAtualId===l.id)} animal(is)${propriedades.length>1&&nomeProp(l.propriedadeId)?" · "+nomeProp(l.propriedadeId):""}`})),
     grupo:(grupos||[]).map(g=>({id:g.id,t:g.nome,s:""})),
-    animal:ativos.map(a=>({id:a.id,t:rotuloCod(a),s:nomeLote(a.loteAtualId)}))};
+    animal:ativos.map(a=>({id:a.id,t:rotuloCod(a),s:nomeLote(a.loteAtualId)})),
+    servico:servicos.map(s=>({id:s.id,t:nomeServico(s),s:s.especie||""}))};
   const sug=it.grupo==="manutencao"?"pasto":"rebanho";
   abrir(`<h2>Consumo — ${esc(it.nome)}</h2>
     <div class="meta" style="margin-bottom:8px">Saldo: <b>${numFmt(it.saldo)} ${esc(it.unidade||"un")}</b> · custo médio ${moeda(it.custoMedio||0)}</div>
@@ -263,7 +265,7 @@ async function formConsumoInsumo(id){
     <label>Data</label><input id="co_data" type="date" value="${hoje()}" max="${hoje()}">
     <label>Usado em *</label>
     <select id="co_apr_tipo" onchange="trocarDestinoConsumo()">
-      ${[["rebanho",`Todo o rebanho (${ativos.length} animais ativos)`],["propriedade","Propriedades"],["pasto","Pastos"],["lote","Lotes"],["grupo","Grupos"],["animal","Animais"]].map(([k,t])=>`<option value="${k}" ${k===sug?"selected":""}>${t}</option>`).join("")}
+      ${[["rebanho",`Todo o rebanho (${ativos.length} animais ativos)`],["propriedade","Propriedades"],["pasto","Pastos"],["lote","Lotes"],["grupo","Grupos"],["animal","Animais"],...(servicos.length?[["servico","Animal de serviço (cavalo, burro, cão)"]]:[])].map(([k,t])=>`<option value="${k}" ${k===sug?"selected":""}>${t}</option>`).join("")}
     </select>
     <div id="co_apr_box" style="display:none;margin-top:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 2px 4px">
@@ -315,6 +317,7 @@ async function resumoDestinoConsumo(){
   const c=document.getElementById("co_apr_cont");if(c)c.textContent=`${ids.length} marcado(s)`;
   const r=document.getElementById("co_apr_resumo");if(!r)return;
   if(t!=="rebanho"&&!ids.length){r.textContent="";return;}
+  if(t==="servico"){r.innerHTML=`Custo vai para o animal de serviço (categoria <b>${CATEGORIA_SERVICO}</b>), fora do rebanho.`;return;}
   const {anim}=await resolverDestinoConsumo(t,ids);
   r.innerHTML=anim.length?`Custo dividido entre <b>${anim.length} animal(is)</b>.`:`Nenhum animal ativo nesse destino: o custo fica na propriedade, sem divisão por lote.`;
 }
@@ -358,6 +361,12 @@ function calcularSaldoInsumo(movs){
     else saldo-=q;
   }
   return {saldo,custo,temEntrada};
+}
+// Uso de um item com data anterior à primeira compra costuma ser data errada: pede confirmação (V177/V178).
+async function confirmarDataAntesDaCompra(it,data){
+  const entradas=(await getAll("insumo_mov")).filter(m=>m.insumoId===it.id&&m.tipo==="entrada"&&m.data).map(m=>m.data).sort();
+  if(!entradas.length||data>=entradas[0])return true;
+  return confirm(`A data (${fmt(data)}) é anterior à primeira entrada de ${it.nome} no estoque (${fmt(entradas[0])}).\n\nRegistrar assim mesmo? Se a compra foi antes, corrija a data da entrada no Estoque.`);
 }
 /* Recalcula saldo e custo médio do item depois de uma mudança nos movimentos.
    "alteracao" (opcional) é a mudança em si (apagar/ajustar movimento): o saldo que o item tinha sem

@@ -76,13 +76,18 @@ function hardDel(s,id){return new Promise((ok,er)=>{const r=tx(s,"readwrite").de
 async function activeOrgIdLocal(){
   try{const m=await getRaw("sync_meta","device");return m&&m.active_org_id||null;}catch(e){return null;}
 }
-async function getAll(s){
+/* getAll(store): registros ativos da conta. Na store "animais" vêm só os animais do REBANHO;
+   os animais de serviço (cavalo, burro, cão — servico:true, V178) ficam de fora de contagens,
+   lotação, análise, venda e troca de lote, e são lidos com getAll("animais",{servico:true}). */
+async function getAll(s,opcoes){
   const arr=await getAllRaw(s);
-  const ativos=arr.filter(o=>!o.deleted_at);
-  if(!SYNC_STORES.includes(s))return ativos;
-  const org=await activeOrgIdLocal();
-  if(!org)return ativos;
-  return ativos.filter(o=>!o.organization_id||o.organization_id===org);
+  let ativos=arr.filter(o=>!o.deleted_at);
+  if(SYNC_STORES.includes(s)){
+    const org=await activeOrgIdLocal();
+    if(org)ativos=ativos.filter(o=>!o.organization_id||o.organization_id===org);
+  }
+  if(s==="animais"){const so=!!(opcoes&&opcoes.servico);ativos=ativos.filter(a=>(a.servico===true)===so);}
+  return ativos;
 }
 async function get(s,id){
   const o=await getRaw(s,id);

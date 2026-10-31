@@ -62,6 +62,10 @@
     const aprTipo=val('co_apr_tipo')||'rebanho';
     const aprIds=[...document.querySelectorAll('.co_apr_ck:checked')].map(c=>c.value);
     if(aprTipo!=='rebanho'&&!aprIds.length)return alert('Marque onde o item foi usado.');
+    if(aprTipo==='servico'){ // V178: animal de serviço — custo "Animais de serviço", fora do rebanho
+      if(aprIds.length>1)return alert('Marque um animal de serviço por vez.');
+      await registrarConsumoServico({it,servicoId:aprIds[0],qtd,data,obs});fechar();return telaEstoque();
+    }
     const valor=qtd*custoUnit;
     const {anim,propriedadeId}=await resolverDestinoConsumo(aprTipo,aprIds);
     let rateioLotes=null;

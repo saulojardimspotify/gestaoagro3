@@ -52,6 +52,7 @@ const ICONES={
   camera:'<path d="M4 8h3l1.6-2.4h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.4"/>',
   chave:'<path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3 8-8-1.3-1.3a4 4 0 0 1-5-5l2.5 2.5 2-2z"/><path d="M3 21l6-6"/>',
   nuvem:'<path d="M7 18.5h10.5a4 4 0 0 0 .4-8 6 6 0 0 0-11.6-1.4A4.6 4.6 0 0 0 7 18.5z"/>',
+  ferradura:'<path d="M6.5 4C4.6 6.8 4 10.5 5.2 14.2 6.3 17.8 9 20.5 12 20.5s5.7-2.7 6.8-6.3C20 10.5 19.4 6.8 17.5 4"/><path d="M5.5 4h3M15.5 4h3M6.4 9.5h.01M6.9 14.5h.01M17.6 9.5h.01M17.1 14.5h.01"/>',
   cadeado:'<rect x="4.5" y="10.5" width="15" height="10.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3M12 14.5v2.5"/>'
 };
 function ico(n){const d=ICONES[n];return d?`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`:"";}

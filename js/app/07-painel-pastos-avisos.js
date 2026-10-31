@@ -83,6 +83,7 @@ async function telaPainel(){
       ${mod(ico("etiqueta"),"Venda / Morte de Animal","Venda individual, múltipla, por lote ou grupo e registro de morte.","telaVendaMorteAnimal()")}
       ${mod(ico("seringa"),"Eventos de Manejo","Marcar, medicar ou trocar de lote.","telaManejo()")}
       ${mod(ico("cerca"),"Lotes e Grupos","Lotes por propriedade e grupos de animais.","abrirLotesOperacional()")}
+      ${mod(ico("ferradura"),"Animais de serviço","Cavalo, burro e cão do manejo: cadastro, remédios e gastos. Fora do rebanho.","telaAnimaisServico()")}
     </div>
     <div class="submod">${ico("caixa")}Recursos e Alertas</div>
     <div class="grid">

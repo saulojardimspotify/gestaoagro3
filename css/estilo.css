@@ -107,6 +107,7 @@
 
   /* ---------- Módulos ---------- */
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .grid > .mod:last-child:nth-child(odd){grid-column:1/-1;} /* card sozinho na última linha ocupa a largura toda */
   .mod-list{display:flex;flex-direction:column;gap:22px;margin-bottom:6px;}
   .filtros-animais{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;}
   .filtros-animais select{font-size:15px;padding:10px 12px;}

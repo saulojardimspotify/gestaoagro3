@@ -154,7 +154,7 @@
   }
 
   async function contabilizarAnimal(a,lotesArg,ctx){
-    if(!a||a.deleted_at)return;
+    if(!a||a.deleted_at||a.servico===true)return; // V178: animal de serviço não é estoque de semoventes
     const lotes=lotesArg||await getAll('lotes');
     const propId=propAnimal(a,lotes);
     if(a.status==='Morto')await registrarBaixaMorte(a,propId,ctx);

@@ -40,19 +40,19 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | Arquivo | Conteúdo |
 |---|---|
 | 01-config-conta.js | Endereço e chave do Supabase, sessão (login), `sbFetch`, permissões de uso |
-| 02-banco-local.js | IndexedDB: `abrirDB`, `get`, `getAll`, `put`, `del` (com metadados de sincronização) |
+| 02-banco-local.js | IndexedDB: `abrirDB`, `get`, `getAll`, `put`, `del` (com metadados de sincronização); `getAll("animais")` traz só o rebanho, `getAll("animais",{servico:true})` os animais de serviço |
 | 03-utilidades-constantes.js | Datas, moeda, área em alqueire (`alqTxt`, `areaDoCampo`; banco segue em ha), rótulos de animal, raças, categorias, estoque/medicamentos, migração de medicamentos |
 | 04-interface-base.js | `registrarEvento`/`excluirEvento`, ícones SVG (`ico`), menu inferior e `render()` das abas, tela de login |
 | 05-instalar-primeiros-passos.js | Tela "Instalar o app" e cadastro inicial obrigatório |
 | 06-inicio.js | Página inicial: pendências, atalhos, Rebanho hoje, Financeiro, nascidos |
 | 07-painel-pastos-avisos.js | Gestão Operacional (módulos), pastos (inclui "Trocar lote de pasto", usado também no atalho do Início; histórico de pasto de cada lote em `periodosPastoDoLote` e `caminhoDoAnimal`), avisos e próximas doses |
-| 08-lotes-animais.js | Lotes e Grupos, lote (com "Selecionar vários" para mover animais de lote), lista e ficha do animal; **toda troca de lote** passa por `moverAnimal()` (grava `loteDeId`/`loteParaId` no evento) e o lote de cada data sai de `historicoLotesAnimal`/`loteDoAnimalNaData` |
+| 08-lotes-animais.js | Lotes e Grupos, lote (com "Selecionar vários" para mover animais de lote), lista e ficha do animal; **toda troca de lote** passa por `moverAnimal()` (grava `loteDeId`/`loteParaId` no evento) e o lote de cada data sai de `historicoLotesAnimal`/`loteDoAnimalNaData`; **Animais de serviço** (cavalo, burro, cão — V178): lista, cadastro, ficha com gastos, `registrarConsumoServico`, `formGastoServico` |
 | 09-perfil-nuvem-sincronizacao.js | Perfil (aberto pela foto do topo): dados do usuário, cadastro/edição de propriedades e marcas, conta, sincronização e cópias de segurança |
 | 10-formularios.js | Janela (`abrir`/`fechar`), menu ☰, "Sobre o app" e entrada do Financeiro |
 | 11-financeiro.js | Resumo, lançamentos, relatórios e custos de produção por lote |
 | 12-estoque.js | Estoque de insumos: página com busca, filtros e ordenação; cadastro (com foto, entrada inicial e bloqueio de item repetido), entradas, consumos, ficha do item; saldo e custo médio recalculados por `reconstruirInsumo` (`calcularSaldoInsumo`) |
 | 13-grupos-pastos-cadastros.js | Grupos, cadastro de pastos, cadastro (com peso ao nascer opcional), saída e edição do animal |
-| 14-manejo-medicamentos.js | Manejo, aplicação de medicamento integrada ao estoque, troca de lote |
+| 14-manejo-medicamentos.js | Manejo, aplicação de medicamento integrada ao estoque (também em animal de serviço), troca de lote |
 | 15-backup.js | Backup manual em arquivo |
 | 16-navegacao.js | Histórico de telas: o "‹ Voltar" volta à tela anterior com filtros, busca e rolagem; `recarregarTelaAtual()` redesenha a tela aberta depois de salvar |
 | 17-analise-zootecnica.js | Aba Análise: página inicial e análise individual (dias e meses, peso ganho, GMD, margem de contribuição, custo direto por animal com detalhes, histórico de peso com GMD por período), cartão "Por onde passou" (lotes e pastos com datas), análise por propriedade pelo histórico de lotes (lotação em animais/alqueire com sinal de cor, UA/alq, @/alq/ano, mortalidade, prenhezes indesejadas), registro de pesagem com peso em kg; ligada à página do animal nos dois sentidos |
@@ -102,6 +102,11 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
   travar o saldo em zero no meio (aplicação com data anterior à compra continua contando) e mantém o
   saldo que o item tinha sem movimento (itens antigos/migrados). Mudanças em movimentos vão dentro de `alteracao`.
 - Trocas de lote (V177): não mudar `loteAtualId` direto; usar `moverAnimal(id, lote, data, hora)`.
+- Animais de serviço (V178): ficam na store `animais` com `servico:true` (sem store nova). `getAll("animais")` não
+  os traz, então ficam fora do rebanho, da lotação/UA, da análise, da venda e da troca de lote, e a contabilidade
+  não os trata como estoque de semoventes. Gastos = lançamentos de custo de produção, categoria
+  "Animais de serviço", `apropriacaoTipo:"servico"` e `animalServicoId` (remédio do estoque: `insumo_mov` com
+  `animalServicoId` + `consumo_insumo`).
 
 ## Como incluir um arquivo .js novo
 

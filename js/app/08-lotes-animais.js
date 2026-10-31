@@ -387,3 +387,176 @@ function blocoDesmamaFicha(a){
     <div class="ti" style="font-size:16px;${atras?"color:#c0392b":""}">${desmamaLabel(a)}</div>
     ${botoes}</div>`;
 }
+
+/* ======================= ANIMAIS DE SERVIÇO (V178) =======================
+   Cavalo, burro, cão... que ajudam no manejo. Ficam na store "animais" com servico:true e NÃO
+   fazem parte do rebanho: getAll("animais") não os traz (02-banco-local.js), então ficam fora de
+   contagens, lotação, UA, análise, venda e troca de lote. Lidos com getAll("animais",{servico:true}).
+   Gastos: lançamentos de custo de produção na categoria "Animais de serviço", com
+   apropriacaoTipo:"servico" e animalServicoId (custo indireto da propriedade, não vai para nenhum boi).
+   - Remédio do estoque: formAplicacao (alvo "Animal de serviço") → registrarConsumoServico() — baixa no estoque (insumo_mov com animalServicoId)
+     e custo (consumo_insumo, partida D Custo de produção / C Estoque de insumos).
+   - Outros gastos (veterinário, ferrador, sela...): formGastoServico() — lançamento manual à vista ou a prazo. */
+const ESPECIES_SERVICO=["Cavalo","Égua","Burro","Mula","Cão","Outro"];
+const TIPOS_GASTO_SERVICO=["Medicamento / vacina","Veterinário","Ferrageamento","Alimentação","Arreio / sela","Outros"];
+const CATEGORIA_SERVICO="Animais de serviço";
+
+// Tipo de gasto de um item do estoque usado no animal de serviço.
+const tipoGastoDoItem=it=>!it?"Outros":ehMedicamentoEstoque(it)?"Medicamento / vacina":(it.grupo==="manutencao"?"Outros":"Alimentação");
+const nomeServico=s=>s?(s.nome||s.especie||"Animal de serviço"):"Animal de serviço";
+const thumbServico=(s,size)=>`<div class="an-thumb" style="width:${size}px;height:${size}px">${s.foto?`<img src="${esc(s.foto)}" alt="">`:ico("ferradura")}</div>`;
+// Gastos de um animal de serviço: lançamentos ligados a ele + baixas do estoque sem valor (custo médio zero).
+function gastosDoServico(id,lancamentos,movs,insumos){
+  const lancs=lancamentos.filter(l=>l.tipo!=="partida_contabil"&&l.animalServicoId===id);
+  const comLanc=new Set(lancs.filter(l=>l.origem==="consumo_insumo").map(l=>l.refId));
+  const itens=lancs.map(l=>({id:l.id,lancId:l.id,movId:l.origem==="consumo_insumo"?l.refId:null,data:l.data,valor:Number(l.valor)||0,
+    tipo:l.tipoGasto||(l.origem==="consumo_insumo"?"Medicamento / vacina":"Outros"),descricao:l.descricao||"",aPrazo:l.aVista===false}));
+  for(const m of movs)if(m.animalServicoId===id&&!comLanc.has(m.id)){
+    const it=insumos.find(i=>i.id===m.insumoId);
+    itens.push({id:m.id,lancId:null,movId:m.id,data:m.data,valor:0,tipo:tipoGastoDoItem(it),
+      descricao:`${it?it.nome:"Item do estoque"} (${numFmt(m.qtd)} ${m.unidade||"un"}) · sem custo no estoque`});
+  }
+  return itens.sort((x,y)=>String(y.data).localeCompare(String(x.data)));
+}
+async function dadosServico(){
+  const [servicos,lancamentos,movs,insumos,propriedades]=await Promise.all([getAll("animais",{servico:true}),
+    getAll("lancamentos"),getAll("insumo_mov"),getAll("insumos"),getAll("propriedades")]);
+  return {servicos,lancamentos,movs,insumos,propriedades};
+}
+
+async function telaAnimaisServico(){
+  topoPagina();
+  const d=await dadosServico(),ano=hoje().slice(0,4);
+  const nomeProp=id=>(d.propriedades.find(p=>p.id===id)||{}).nome||"";
+  const card=s=>{const g=gastosDoServico(s.id,d.lancamentos,d.movs,d.insumos).filter(i=>String(i.data).slice(0,4)===ano).reduce((t,i)=>t+i.valor,0);
+    return `<div class="card rt an-item" onclick="verAnimalServico('${s.id}')"><div class="an-item-cab">${thumbServico(s,46)}
+      <div class="ti" style="flex:1;min-width:0">${esc(nomeServico(s))}<div class="meta">${esc(s.especie||"")}${d.propriedades.length>1&&nomeProp(s.propriedadeId)?` · ${esc(nomeProp(s.propriedadeId))}`:""}</div></div>
+      <div style="text-align:right"><b>${moeda(g)}</b><div class="meta">em ${ano}</div></div></div></div>`;};
+  const ativos=d.servicos.filter(s=>s.status!=="Inativo").sort((x,y)=>nomeServico(x).localeCompare(nomeServico(y),'pt-BR'));
+  const inativos=d.servicos.filter(s=>s.status==="Inativo");
+  $t.innerHTML=`<button class="voltar" onclick="telaPainel()">‹ Gestão Operacional</button>
+    <div class="sechead"><span class="sic" data-ico="ferradura"></span><h2>Animais de serviço</h2></div>
+    <div class="meta" style="margin:-4px 4px 14px">Cavalos, burros e cães que ajudam no manejo. Não entram no rebanho, na lotação nem na análise; os gastos com eles são custo de produção da propriedade.</div>
+    <button class="btn" style="margin:0 0 14px" onclick="formAnimalServico()">+ Cadastrar animal de serviço</button>
+    ${ativos.map(card).join("")||`<div class="vazio"><b>Nenhum animal de serviço cadastrado.</b></div>`}
+    ${inativos.length?`<details class="card"><summary class="ti" style="font-size:15px">Não estão mais na propriedade (${inativos.length})</summary>${inativos.map(card).join("")}</details>`:""}`;
+}
+
+async function formAnimalServico(id){
+  if(!(await podeUsarApp("Cadastrar animal de serviço")))return;
+  const s=id?await get("animais",id):null;
+  const propriedades=await getAll("propriedades");
+  if(!propriedades.length)return alert("Cadastre uma propriedade primeiro (Perfil › Propriedades).");
+  _animalFoto=s&&s.foto||"";
+  const opt=(arr,sel)=>arr.map(x=>`<option value="${esc(x)}" ${x===sel?"selected":""}>${esc(x)}</option>`).join("");
+  abrir(`<h2>${s?"Editar animal de serviço":"Cadastrar animal de serviço"}</h2>
+    <div style="display:flex;justify-content:center;margin:6px 0 10px">
+      <div class="avatar-wrap" style="width:74px;height:74px" onclick="document.getElementById('an_file').click()">
+        <div class="avatar" id="an_avatar" style="width:74px;height:74px;border-radius:14px">${_animalFoto?`<img src="${_animalFoto}" alt="">`:ico("ferradura")}</div>
+        <div class="avatar-cam">📷</div></div></div>
+    <input type="file" id="an_file" accept="image/*" style="display:none" onchange="pickFotoAnimal(this)">
+    <div class="meta" style="text-align:center;margin:-4px 0 10px">Foto (opcional)</div>
+    <label>Nome *</label><input id="sv_nome" value="${esc(s&&s.nome||"")}" placeholder="Ex: Trovão">
+    <label>Espécie</label><select id="sv_especie">${opt(ESPECIES_SERVICO,s?s.especie:"Cavalo")}</select>
+    <label>Propriedade *</label><select id="sv_prop">${propriedades.map(p=>`<option value="${p.id}" ${s&&s.propriedadeId===p.id?"selected":""}>${esc(p.nome)}</option>`).join("")}</select>
+    <label>Desde quando está com você (opcional)</label><input id="sv_entrada" type="date" value="${s&&s.dataEntrada||""}" max="${hoje()}">
+    <label>Observação (opcional)</label><input id="sv_obs" value="${esc(s&&s.obs||"")}" placeholder="Ex: pelagem, idade, cuidados">
+    ${s?`<label>Situação</label><select id="sv_status"><option value="Ativo">Na propriedade</option><option value="Inativo" ${s.status==="Inativo"?"selected":""}>Não está mais (vendido, morreu, doado…)</option></select>`:""}
+    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
+      <button class="btn" onclick="salvarAnimalServico(${s?`'${s.id}'`:""})">Salvar</button></div>
+    ${s?`<button class="btn-fant" style="margin-top:12px;color:var(--perigo)" onclick="apagarAnimalServico('${s.id}')">Apagar cadastro</button>`:""}`);
+}
+async function salvarAnimalServico(id){
+  const nome=val("sv_nome").trim();if(!nome)return alert("Informe o nome do animal.");
+  const entrada=val("sv_entrada");if(entrada&&entrada>hoje())return alert("A data não pode ser no futuro.");
+  const s=id?await get("animais",id):{id:uid(),servico:true,status:"Ativo",criadoEm:Date.now()};
+  Object.assign(s,{nome,especie:val("sv_especie"),propriedadeId:val("sv_prop"),dataEntrada:entrada||"",obs:val("sv_obs"),foto:_animalFoto||""});
+  if(id&&document.getElementById("sv_status"))s.status=val("sv_status");
+  await put("animais",s);fechar();verAnimalServico(s.id);
+}
+async function apagarAnimalServico(id){
+  const d=await dadosServico();
+  if(gastosDoServico(id,d.lancamentos,d.movs,d.insumos).length)return alert("Este animal tem gastos registrados. Para guardar o histórico, marque a situação como \"Não está mais\" em vez de apagar.");
+  if(!confirm("Apagar o cadastro deste animal de serviço?"))return;
+  await del("animais",id);fechar();telaAnimaisServico();
+}
+
+async function verAnimalServico(id){
+  topoPagina();
+  const s=await get("animais",id);if(!s||!s.servico)return telaAnimaisServico();
+  const d=await dadosServico(),ano=hoje().slice(0,4);
+  const itens=gastosDoServico(id,d.lancamentos,d.movs,d.insumos);
+  const doAno=itens.filter(i=>String(i.data).slice(0,4)===ano);
+  const porTipo={};doAno.forEach(i=>{porTipo[i.tipo]=(porTipo[i.tipo]||0)+i.valor;});
+  const prop=(d.propriedades.find(p=>p.id===s.propriedadeId)||{}).nome||"";
+  $t.innerHTML=`<button class="voltar" onclick="telaAnimaisServico()">‹ Animais de serviço</button>
+    <div class="card"><div class="an-item-cab">${thumbServico(s,56)}<div style="flex:1;min-width:0">
+        <div class="ti" style="font-size:20px">${esc(nomeServico(s))}</div>
+        <div class="meta">${esc(s.especie||"")}${prop?` · ${esc(prop)}`:""}${s.dataEntrada?` · desde ${fmt(s.dataEntrada)}`:""}</div></div>
+      ${s.status==="Inativo"?`<span class="chip chip-off">Não está mais</span>`:""}</div>
+      ${s.obs?`<div class="meta" style="margin-top:8px">${esc(s.obs)}</div>`:""}
+      <button class="btn btn-sec" style="margin:12px 0 0" onclick="formAnimalServico('${id}')">✎ Editar dados</button></div>
+    <div class="an-destaques">
+      <div><span>Gasto em ${ano}</span><b>${moeda(doAno.reduce((t,i)=>t+i.valor,0))}</b><small>${doAno.length} registro(s)</small></div>
+      <div><span>Gasto total</span><b>${moeda(itens.reduce((t,i)=>t+i.valor,0))}</b><small>desde o cadastro</small></div>
+    </div>
+    ${Object.keys(porTipo).length?`<div class="card"><div class="h3" style="margin-top:0">${ano} por tipo de gasto</div>
+      <div class="an-custo-cats">${Object.entries(porTipo).sort((x,y)=>y[1]-x[1]).map(([k,v])=>`<div><span>${esc(k)}</span><b>${moeda(v)}</b></div>`).join("")}</div></div>`:""}
+    ${s.status!=="Inativo"?`<div class="lado" style="margin:0 0 12px">
+      <button class="btn btn-ico" onclick="formAplicacao({voltar:'servico',servicoId:'${id}'})">${ico("seringa")} Remédio do estoque</button>
+      <button class="btn btn-sec btn-ico" onclick="formGastoServico('${id}')">${ico("carteira")} Lançar gasto</button></div>`:""}
+    <div class="card"><div class="h3" style="margin-top:0">Histórico de gastos</div>
+      ${itens.map(i=>`<div class="an-custo-item"><div style="flex:1;min-width:0"><b>${esc(i.tipo)}</b>
+          <div class="meta">${fmt(i.data)}${i.descricao?` · ${esc(i.descricao)}`:""}${i.aPrazo?" · a prazo":""}</div></div>
+        <b>${moeda(i.valor)}</b><button class="btn-fant" style="padding:2px 8px;color:var(--perigo)" onclick="excluirGastoServico('${id}','${i.lancId||""}','${i.movId||""}')">✕</button></div>`).join("")
+        ||`<div class="meta">Nenhum gasto registrado ainda.</div>`}
+      <div class="meta" style="margin-top:10px">Os gastos entram no Financeiro como <b>custo de produção</b> da propriedade, na categoria "${CATEGORIA_SERVICO}". Remédio tirado do estoque dá baixa no estoque com o custo médio do item.</div></div>`;
+}
+
+/* ---------- Remédio do estoque no animal de serviço ----------
+   O formulário é o mesmo da aplicação no gado (formAplicacao, alvo "Animal de serviço", em 14). */
+// Baixa no estoque + custo de produção ligado ao animal de serviço (usado na ficha e no Consumo do Estoque).
+async function registrarConsumoServico({it,servicoId,qtd,data,obs}){
+  const s=await get("animais",servicoId),un=it.unidade||"un",custoUnit=it.custoMedio||0,valor=qtd*custoUnit,movId=uid();
+  it.saldo=Math.max(0,(it.saldo||0)-qtd);await put("insumos",it);
+  await put("insumo_mov",{id:movId,insumoId:it.id,tipo:"consumo",qtd,unidade:un,custoUnit,data,
+    obs:obs||`Usado em ${nomeServico(s)}`,origem:"servico",animalServicoId:servicoId,apropriacaoTipo:"servico",apropriacaoId:servicoId,criadoEm:Date.now()});
+  if(valor>0)await put("lancamentos",{id:uid(),tipo:"despesa",natureza:"custo",classe:"custo",categoria:CATEGORIA_SERVICO,tipoGasto:tipoGastoDoItem(it),
+    valor,data,descricao:`${it.nome} (${numFmt(qtd)} ${un}) · ${nomeServico(s)}${obs?` · ${obs}`:""}`,propriedadeId:s&&s.propriedadeId||null,pago:true,
+    origem:"consumo_insumo",refId:movId,contaV144:true,apropriacaoTipo:"servico",apropriacaoId:servicoId,animalServicoId:servicoId,criadoEm:Date.now()});
+}
+
+/* ---------- Outros gastos (veterinário, ferrador, remédio comprado só para ele...) ---------- */
+async function formGastoServico(id){
+  if(!(await podeUsarApp("Criar lançamento financeiro")))return;
+  const s=await get("animais",id);if(!s)return;
+  abrir(`<h2>Gasto — ${esc(nomeServico(s))}</h2>
+    <label>Tipo de gasto</label><select id="sg_tipo">${TIPOS_GASTO_SERVICO.map(t=>`<option>${esc(t)}</option>`).join("")}</select>
+    <label>Valor (R$) *</label><input id="sg_valor" inputmode="decimal" placeholder="Ex: 150">
+    <label>Data *</label><input id="sg_data" type="date" value="${hoje()}" max="${hoje()}">
+    <label>Descrição (opcional)</label><input id="sg_desc" placeholder="Ex: ferrador João, antibiótico comprado na loja">
+    <label>Forma</label><select id="sg_pago"><option value="1">À vista (pago na data)</option><option value="0">A prazo (fica a pagar)</option></select>
+    <div class="meta" style="margin-top:6px">Vai para o Financeiro como custo de produção, categoria "${CATEGORIA_SERVICO}". Para remédio que já está no estoque, use "Remédio do estoque".</div>
+    <div class="lado" style="margin-top:18px"><button class="btn btn-sec" onclick="fechar()">Cancelar</button>
+      <button class="btn" onclick="salvarGastoServico('${id}')">Salvar</button></div>`);
+}
+async function salvarGastoServico(id){
+  const s=await get("animais",id);if(!s)return;
+  const valor=numBR("sg_valor"),data=val("sg_data"),tipo=val("sg_tipo"),desc=val("sg_desc");
+  if(!(valor>0))return alert("Informe o valor.");
+  if(!data)return alert("Informe a data.");
+  if(data>hoje())return alert("A data não pode ser no futuro.");
+  await put("lancamentos",{id:uid(),tipo:"despesa",natureza:"custo",classe:"custo",categoria:CATEGORIA_SERVICO,tipoGasto:tipo,valor,data,
+    descricao:`${tipo} · ${nomeServico(s)}${desc?` · ${desc}`:""}`,propriedadeId:s.propriedadeId||null,pago:val("sg_pago")==="1",
+    apropriacaoTipo:"servico",apropriacaoId:id,animalServicoId:id,origem:"manual",refId:null,criadoEm:Date.now()});
+  fechar();verAnimalServico(id);
+}
+// Excluir um gasto: remédio do estoque devolve a quantidade ao estoque; lançamento é estornado no Livro Diário.
+async function excluirGastoServico(id,lancId,movId){
+  if(!confirm(movId?"Excluir este registro? A quantidade volta para o estoque e o custo é estornado.":"Excluir este gasto? O lançamento é estornado no Financeiro."))return;
+  if(movId){const m=await get("insumo_mov",movId);
+    if(m)await reconstruirInsumo(m.insumoId,async()=>{if(lancId)await del("lancamentos",lancId);await del("insumo_mov",movId);});
+    else if(lancId)await del("lancamentos",lancId);}
+  else if(lancId)await del("lancamentos",lancId);
+  verAnimalServico(id);
+}

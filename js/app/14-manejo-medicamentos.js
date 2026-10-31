@@ -147,7 +147,8 @@ async function formAplicacao(opts){
       <span><b>${esc(rotuloCod(a))}</b><span class="meta" style="display:block">${esc(nomeLote(a.loteAtualId))}</span></span></label>`).join("");
   const optMed=`<option value="">— selecione —</option>`+meds.map(m=>{const sem=(m.saldo||0)<=0;
     return `<option value="${m.id}" ${sem?"disabled":""} ${m.id===_apCtx.medId&&!sem?"selected":""}>${esc(m.nome)}${m.marca?` · ${esc(m.marca)}`:""} — ${sem?"sem estoque":`estoque ${numFmt(m.saldo)} ${esc(m.unidade||"un")}`}</option>`;}).join("");
-  const alvo0=_apCtx.animalIds?"varios":(_apCtx.loteId?"lote":"animal");
+  const servicos=(await getAll("animais",{servico:true})).filter(s=>s.status!=="Inativo"); // V178: cavalo, burro, cão
+  const alvo0=_apCtx.servicoId?"servico":(_apCtx.animalIds?"varios":(_apCtx.loteId?"lote":"animal"));
   abrir(`<h2>Registrar aplicação</h2>
     <label>Aplicar em *</label>
     <select id="ap_alvo" onchange="alvoAplicacao()">
@@ -155,6 +156,7 @@ async function formAplicacao(opts){
       <option value="varios" ${alvo0==="varios"?"selected":""}>Vários animais</option>
       <option value="grupo">Um grupo</option>
       <option value="lote" ${alvo0==="lote"?"selected":""}>Lote inteiro</option>
+      ${servicos.length?`<option value="servico" ${alvo0==="servico"?"selected":""}>Animal de serviço (cavalo, burro, cão)</option>`:""}
     </select>
     <div id="ap_g_animal"><label>Animal *</label><select id="ap_animal" onchange="resumoAplicacao()">${optAn}</select></div>
     <div id="ap_g_varios" style="display:none"><label>Animais *</label>
@@ -163,14 +165,16 @@ async function formAplicacao(opts){
       <div style="max-height:240px;overflow:auto;border-top:1px solid var(--linha)">${checks||`<div class="meta" style="padding:10px 0">Nenhum animal ativo.</div>`}</div></div>
     <div id="ap_g_grupo" style="display:none"><label>Grupo *</label><select id="ap_grupo" onchange="resumoAplicacao()">${optGr}</select></div>
     <div id="ap_g_lote" style="display:none"><label>Lote *</label><select id="ap_lote" onchange="resumoAplicacao()">${optLt}</select></div>
+    <div id="ap_g_servico" style="display:none"><label>Animal de serviço *</label><select id="ap_servico" onchange="resumoAplicacao()">${servicos.map(s=>`<option value="${s.id}" ${s.id===_apCtx.servicoId?"selected":""}>${esc(nomeServico(s))}${s.especie?` · ${esc(s.especie)}`:""}</option>`).join("")}</select>
+      <div class="meta" style="margin-top:4px">Fora do rebanho: o custo vai para "Animais de serviço" e aparece na ficha dele.</div></div>
     <label>Medicamento / vacina *</label><select id="ap_med" onchange="resumoAplicacao()">${optMed}</select>
     <label id="ap_dose_lbl">Dose por animal *</label><input id="ap_dose" inputmode="decimal" placeholder="Ex: 5" value="${_apCtx.dose!=null?String(_apCtx.dose).replace(".",","):""}" oninput="resumoAplicacao()">
     <label>Via de aplicação</label><select id="ap_via">${VIAS.map(v=>`<option value="${v}" ${v===_apCtx.via?"selected":""}>${v}</option>`).join("")}</select>
     <label>Data e hora</label>
     <div class="lado"><input id="ap_data" type="date" value="${hoje()}" max="${hoje()}"><input id="ap_hora" type="time" value="${horaAgora()}"></div>
     <label>Observação (opcional)</label><input id="ap_obs" value="${_apCtx.avisoId?"Dose de reforço":""}" placeholder="Ex: reforço, lote/validade do frasco, quem aplicou…">
-    <label>Tem próxima dose (reforço)?</label>
-    <select id="ap_prox" onchange="toggleProxDose()"><option value="nao">Não</option><option value="sim">Sim — criar lembrete em Avisos</option></select>
+    <div id="ap_g_temprox"><label>Tem próxima dose (reforço)?</label>
+    <select id="ap_prox" onchange="toggleProxDose()"><option value="nao">Não</option><option value="sim">Sim — criar lembrete em Avisos</option></select></div>
     <div id="ap_g_prox" style="display:none">
       <label>Daqui a quantos dias? *</label><input id="ap_prox_dias" inputmode="numeric" placeholder="Ex: 21" oninput="calcDataProxDose()">
       <label>Data da próxima dose *</label><input id="ap_prox_data" type="date" oninput="document.getElementById('ap_prox_dias').value=''">
@@ -212,7 +216,10 @@ function calcDataProxDose(){
 }
 function alvoAplicacao(){
   const a=val("ap_alvo")||"animal";
-  ["animal","varios","grupo","lote"].forEach(k=>{const el=document.getElementById("ap_g_"+k);if(el)el.style.display=a===k?"block":"none";});
+  ["animal","varios","grupo","lote","servico"].forEach(k=>{const el=document.getElementById("ap_g_"+k);if(el)el.style.display=a===k?"block":"none";});
+  // Lembrete de próxima dose é só para o rebanho
+  const tp=document.getElementById("ap_g_temprox");if(tp)tp.style.display=a==="servico"?"none":"block";
+  if(a==="servico"&&val("ap_prox")==="sim"){document.getElementById("ap_prox").value="nao";toggleProxDose();}
   resumoAplicacao();
 }
 function filtrarChecksAplicacao(){
@@ -223,6 +230,7 @@ async function animaisDaAplicacao(){
   const alvo=val("ap_alvo")||"animal";
   const todos=await getAll("animais");const ativos=todos.filter(a=>a.status==="Ativo");
   if(alvo==="animal"){const id=val("ap_animal");return {alvo,ids:id?[id]:[],refId:id||null};}
+  if(alvo==="servico"){const id=val("ap_servico");return {alvo,ids:id?[id]:[],refId:id||null};}
   if(alvo==="varios"){const ids=[...document.querySelectorAll(".ap_multi:checked")].map(c=>c.value);return {alvo,ids,refId:null};}
   if(alvo==="grupo"){const g=val("ap_grupo");if(!g)return {alvo,ids:[],refId:null};
     const ok=new Set(ativos.map(a=>a.id));const vs=await getAll("grupo_animais");
@@ -247,7 +255,7 @@ async function resumoAplicacao(){
   const falta=total>saldo+1e-9;
   box.innerHTML=`<div class="meta">${ids.length} animal(is) × ${dose>0?numFmt(dose):"—"} ${esc(un)} = <b>${numFmt(total)} ${esc(un)}</b></div>
     <div class="meta">Saldo no estoque: <b>${numFmt(saldo)} ${esc(un)}</b>${total>0&&!falta?` · fica ${numFmt(saldo-total)} ${esc(un)}`:""}</div>
-    <div class="meta">Custo (custo médio × total): <b>${moeda(custo)}</b> → custo de produção · Sanidade</div>
+    <div class="meta">Custo (custo médio × total): <b>${moeda(custo)}</b> → custo de produção · ${val("ap_alvo")==="servico"?CATEGORIA_SERVICO:"Sanidade"}</div>
     ${falta?`<div class="meta" style="color:var(--perigo);font-weight:700;margin-top:4px">Estoque insuficiente para esta aplicação.</div>`:""}`;
 }
 async function salvarAplicacao(){
@@ -256,6 +264,7 @@ async function salvarAplicacao(){
   if(alvo==="varios"&&!ids.length)return alert("Selecione pelo menos um animal.");
   if(alvo==="grupo"&&!refId)return alert("Selecione o grupo.");
   if(alvo==="lote"&&!refId)return alert("Selecione o lote.");
+  if(alvo==="servico"&&!refId)return alert("Selecione o animal de serviço.");
   if(!ids.length)return alert(alvo==="grupo"?"Esse grupo não tem animais ativos.":"Esse lote não tem animais ativos.");
   const medId=val("ap_med");if(!medId)return alert("Selecione o medicamento ou vacina.");
   const it=await get("insumos",medId);if(!it)return alert("Produto não encontrado no estoque.");
@@ -265,9 +274,12 @@ async function salvarAplicacao(){
   const un=it.unidade||"un",total=dose*ids.length,saldo=it.saldo||0;
   if(saldo<=0)return alert(`Não há ${it.nome} no estoque. Registre a entrada (compra) no Estoque de Insumos antes de aplicar.`);
   if(total>saldo+1e-9)return alert(`Estoque insuficiente de ${it.nome}: a aplicação precisa de ${numFmt(total)} ${un} e o saldo é ${numFmt(saldo)} ${un}. Registre uma entrada no Estoque de Insumos ou diminua a quantidade de animais.`);
-  // V177: aplicação com data anterior à primeira compra do item costuma ser data errada — confirma antes
-  const entradas=(await getAll("insumo_mov")).filter(m=>m.insumoId===it.id&&m.tipo==="entrada"&&m.data).map(m=>m.data).sort();
-  if(entradas.length&&data<entradas[0]&&!confirm(`A data da aplicação (${fmt(data)}) é anterior à primeira entrada de ${it.nome} no estoque (${fmt(entradas[0])}).\n\nRegistrar assim mesmo? Se a compra foi antes, corrija a data da entrada no Estoque.`))return;
+  if(!(await confirmarDataAntesDaCompra(it,data)))return;
+  if(alvo==="servico"){ // V178: cavalo/burro/cão — baixa no estoque e custo "Animais de serviço", sem evento no rebanho
+    await registrarConsumoServico({it,servicoId:refId,qtd:total,data,obs:[via,obs].filter(Boolean).join(" · ")});
+    fechar();alert(`Registrado. Baixa de ${numFmt(total)} ${un} no estoque.`);
+    return _apCtx.voltar==="estoque"?telaEstoque():verAnimalServico(refId);
+  }
   let prox=null;
   if(val("ap_prox")==="sim"){
     const dp=val("ap_prox_data");

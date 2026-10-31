@@ -2,11 +2,11 @@
 (()=>{
   const NATUREZAS={
     receita:{label:'Receita',tipo:'receita',icone:'🟢',cats:['Leite','Arrendamento','Outras receitas']},
-    custo:{label:'Custo de produção',tipo:'despesa',icone:'🟠',cats:['Alimentação','Sanidade','Pastagens','Mão de obra','Manutenção','Máquinas / combustível','Água / energia','Depreciação','Outros custos']},
+    custo:{label:'Custo de produção',tipo:'despesa',icone:'🟠',cats:['Alimentação','Sanidade','Pastagens','Mão de obra','Manutenção','Máquinas / combustível','Água / energia','Depreciação','Animais de serviço','Outros custos']},
     despesa:{label:'Despesa',tipo:'despesa',icone:'🔴',cats:['Administrativa / geral','Despesas com vendas','Impostos / taxas','Serviços administrativos','Outras despesas']},
     investimento:{label:'Investimento',tipo:'investimento',icone:'🔵',cats:['Infraestrutura','Cercas / currais','Drenagem','Máquinas / equipamentos','Formação / ampliação de pastagens','Outros investimentos']}
   };
-  const APROPRIACOES=[['propriedade','Geral da propriedade'],['pasto','Pasto específico'],['lote','Lote específico'],['grupo','Grupo de animais'],['animal','Animal específico']];
+  const APROPRIACOES=[['propriedade','Geral da propriedade'],['pasto','Pasto específico'],['lote','Lote específico'],['grupo','Grupo de animais'],['animal','Animal específico'],['servico','Animal de serviço (cavalo, burro, cão)']];
   const vendasOperacionais=/^(venda de bezerro|venda de matriz\s*\/\s*descarte|venda de animais?)$/i;
 
   if(!document.getElementById('fin112-css')){
@@ -28,6 +28,7 @@
   async function abrirFormClassificado(id,preset){
     if(!(await podeUsarApp('Criar ou editar lançamento financeiro')))return;
     const dados=await tudo();
+    dados.servicos=await getAll('animais',{servico:true}); // V178
     const l=id?await get('lancamentos',id):null;
     const natureza=l?natDe(l):(preset||'despesa');
     const categoria=(l&&l.categoria)||cats(natureza)[0];
@@ -109,6 +110,7 @@
       const lotesOk=new Set(d.lotes.filter(x=>!prop||x.propriedadeId===prop).map(x=>x.id));
       arr=d.animais.filter(x=>(!x.status||x.status==='Ativo')&&(!prop||lotesOk.has(x.loteAtualId)));label='Animal';
     }
+    if(tipo==='servico'){arr=(d.servicos||[]).filter(x=>x.status!=='Inativo'||String(x.id)===String(window._finAprSelecionada||''));label='Animal de serviço';}
     if(lab)lab.textContent=label;
     const nome=x=>tipo==='animal'?`${x.nome?esc(x.nome)+' · ':''}#${esc(x.brinco||x.codigo||'—')}`:esc(x.nome||x.codigo||x.sigla||'—');
     sel.innerHTML=`<option value="">Selecione</option>`+arr.map(x=>`<option value="${x.id}" ${String(window._finAprSelecionada||'')===String(x.id)?'selected':''}>${nome(x)}</option>`).join('');
@@ -129,7 +131,8 @@
     if(apropriacaoTipo!=='propriedade'&&!apropriacaoId)return alert('Selecione onde este lançamento deve ser apropriado.');
     const pago=idVal('lc_pago')==='1',descricao=idVal('lc_desc');
     const classe=natureza==='custo'?'custo':natureza==='investimento'?'investimento':natureza==='despesa'?(categoria==='Despesas com vendas'?'vendas':'admin'):null;
-    const obj={tipo:cfg.tipo,natureza,categoria,valor,data,propriedadeId,descricao,pago,classe,apropriacaoTipo,apropriacaoId};
+    const obj={tipo:cfg.tipo,natureza,categoria,valor,data,propriedadeId,descricao,pago,classe,apropriacaoTipo,apropriacaoId,
+      animalServicoId:apropriacaoTipo==='servico'?apropriacaoId:null}; // V178: gasto ligado ao animal de serviço
     if(id){const l=await get('lancamentos',id);if(l){Object.assign(l,obj);await put('lancamentos',l);}}
     else await put('lancamentos',{id:uid(),...obj,origem:'manual',refId:null,criadoEm:Date.now()});
     fechar();finLancamentos();
