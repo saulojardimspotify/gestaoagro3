@@ -15,8 +15,8 @@ js/app/                 Núcleo do app, dividido por assunto (ver tabela abaixo)
 js/modulos/             Módulos que acrescentam ou ajustam funções do núcleo (carregados depois dele)
 desativados/            Código guardado e NÃO carregado (Engorda e pesagens — ver LEIA-ME)
 testes/                 Testes automáticos no navegador (não fazem parte do app publicado)
-.github/workflows/      manter-banco-ativo.yml: consulta o Supabase 2x por semana (seg e qui) para o plano gratuito não pausar o banco;
-                        lê endereço/chave de js/app/01-config-conta.js (cada repositório consulta o próprio banco)
+.github/workflows/      manter-banco-ativo.yml: chama todo dia a função manter_ativo() do Supabase para o plano gratuito não pausar
+                        o banco; lê endereço/chave de js/app/01-config-conta.js (cada repositório consulta o próprio banco)
 ARQUITETURA.md          Este arquivo
 CLAUDE.md               Regras de trabalho (versão, publicação, cuidados)
 ```
@@ -116,3 +116,15 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 2. Incluir a tag `<script src="…">` no `index.html` na posição certa.
 3. Incluir o caminho na lista `ARQUIVOS` do `sw.js`, na mesma ordem.
 4. Rodar `python3 testes/conferir_arquivos.py` (confere index × sw.js × disco).
+
+## Manter o banco ativo (Supabase gratuito)
+O Supabase pausa o projeto após 7 dias sem consultas reais. Respostas "acesso negado" (401) não contam.
+A tarefa `.github/workflows/manter-banco-ativo.yml` chama todo dia uma função que só responde 'ok'.
+Ela precisa ser criada UMA VEZ em cada banco (Supabase › SQL Editor › New query › Run):
+
+```sql
+create or replace function public.manter_ativo()
+returns text language sql stable security invoker set search_path = ''
+as $$ select 'ok'::text $$;
+grant execute on function public.manter_ativo() to anon, authenticated;
+```
