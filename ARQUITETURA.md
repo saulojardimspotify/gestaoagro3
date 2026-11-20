@@ -53,7 +53,7 @@ os arquivos carregam sem `?v` e a versão é lida direto do `sw.js`.
 | 10-formularios.js | Janela (`abrir`/`fechar`), menu ☰, "Sobre o app" e entrada do Financeiro |
 | 11-financeiro.js | Resumo, lançamentos, relatórios e custos de produção por lote |
 | 12-estoque.js | Estoque de insumos: página com busca, filtros e ordenação; cadastro (com foto, entrada inicial e bloqueio de item repetido), entradas, consumos, ficha do item; saldo e custo médio recalculados por `reconstruirInsumo` (`calcularSaldoInsumo`) |
-| 13-grupos-pastos-cadastros.js | Grupos, cadastro de pastos, cadastro (com peso ao nascer opcional), saída e edição do animal |
+| 13-grupos-pastos-cadastros.js | Grupos, cadastro de pastos, cadastro (com peso ao nascer opcional e escolha da mãe pela foto — só fêmeas ativas com 12+ meses, `campoMae`), saída e edição do animal |
 | 14-manejo-medicamentos.js | Manejo, aplicação de medicamento integrada ao estoque (também em animal de serviço), troca de lote |
 | 15-backup.js | Backup manual em arquivo |
 | 16-navegacao.js | Histórico de telas: o "‹ Voltar" volta à tela anterior com filtros, busca e rolagem; `recarregarTelaAtual()` redesenha a tela aberta depois de salvar |

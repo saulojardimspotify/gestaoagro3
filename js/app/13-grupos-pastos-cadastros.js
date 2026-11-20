@@ -181,6 +181,58 @@ async function excluirPasto(id){
   await del("pastos",id);fechar();telaGestaoPasto();
 }
 
+/* ======================= ESCOLHA DA MÃE (V181) =======================
+   No nascimento e na edição do animal, a mãe é escolhida por cartões com foto, nome/brinco, idade e lote.
+   Só aparecem fêmeas ATIVAS com 12 meses ou mais na data do parto (vendidas, mortas, machos e bezerras ficam
+   de fora). Na edição, a mãe já gravada continua aparecendo mesmo que tenha saído do rebanho depois.
+   O valor fica no campo escondido <prefixo>_mae (lido com val() como antes). */
+let _maeCtx=null;
+const IDADE_MINIMA_MAE_DIAS=365;
+function podeSerMae(m,dataParto){
+  if(m.sexo!=="F"||m.status!=="Ativo")return false;
+  if(!m.dataNascimento||!dataParto)return true;
+  return (new Date(dataParto+"T12:00:00")-new Date(m.dataNascimento+"T12:00:00"))/86400000>=IDADE_MINIMA_MAE_DIAS;
+}
+function campoMae(p,animais,lotes,atualId){
+  _maeCtx={p,animais,lotes,atualId:atualId||null};
+  return `<label>Mãe (opcional)</label><input type="hidden" id="${p}_mae" value="${atualId||""}">
+    <div class="mae-sel" id="${p}_mae_sel" onclick="abrirEscolhaMae()">${htmlMaeEscolhida(atualId)}</div>
+    <div class="mae-painel" id="${p}_mae_painel" style="display:none"></div>`;
+}
+function htmlMaeEscolhida(id){
+  const m=id&&_maeCtx?_maeCtx.animais.find(x=>x.id===id):null;
+  if(!m)return `<div class="mae-sel-txt"><span class="meta">— nenhuma —</span></div><b class="mae-sel-acao">Escolher</b>`;
+  return `${animalThumb(m,44)}<div class="mae-sel-txt"><b>${esc(rotuloCod(m))}</b><span class="meta">${esc(nomeLoteMae(m))}</span></div><b class="mae-sel-acao">Trocar</b>`;
+}
+function nomeLoteMae(m){const l=(_maeCtx.lotes||[]).find(x=>x.id===m.loteAtualId);return l?"▦ "+l.nome:"";}
+function abrirEscolhaMae(){
+  const c=_maeCtx;if(!c)return;
+  const painel=document.getElementById(c.p+"_mae_painel");
+  if(painel.style.display!=="none"){painel.style.display="none";return;}
+  const dataParto=val(c.p+"_nasc")||hoje(),atual=val(c.p+"_mae");
+  const maes=c.animais.filter(m=>podeSerMae(m,dataParto)||m.id===atual).sort((x,y)=>(x.codigo||0)-(y.codigo||0));
+  const idade=m=>{if(!m.dataNascimento)return "";const meses=Math.floor((new Date(dataParto+"T12:00:00")-new Date(m.dataNascimento+"T12:00:00"))/86400000/30.44);return meses>=24?`${Math.floor(meses/12)} anos`:`${meses} meses`;};
+  const cartao=m=>`<div class="sx-card${m.id===atual?" sel":""}" data-b="${esc(((m.brinco||"")+" "+(m.nome||"")+" "+codAnimal(m)).toLowerCase())}" onclick="escolherMae('${m.id}')">${animalThumb(m,48)}
+    <div class="sx-card-txt"><b>${esc(rotuloCod(m))}</b><span class="meta">${[idade(m),nomeLoteMae(m),m.status!=="Ativo"?m.status:""].filter(Boolean).join(" · ")}</span></div><span class="sx-check">✓</span></div>`;
+  painel.innerHTML=`<input id="${c.p}_mae_busca" type="search" placeholder="Buscar por nome, brinco ou código" oninput="filtrarMaes()">
+    <div class="sx-cards mae-cards" id="${c.p}_mae_lista">
+      <div class="sx-card${atual?"":" sel"}" data-b="" onclick="escolherMae('')"><div class="an-thumb" style="width:48px;height:48px">—</div><div class="sx-card-txt"><b>Nenhuma / não sei</b></div><span class="sx-check">✓</span></div>
+      ${maes.map(cartao).join("")||`<div class="meta" style="padding:8px">Nenhuma fêmea ativa com 12 meses ou mais em ${fmt(dataParto)}.</div>`}
+    </div>
+    <div class="meta" style="margin-top:6px">Só fêmeas ativas com 12 meses ou mais na data do nascimento.</div>`;
+  painel.style.display="block";
+}
+function filtrarMaes(){
+  const c=_maeCtx,q=(val(c.p+"_mae_busca")||"").toLowerCase().trim();
+  document.querySelectorAll(`#${c.p}_mae_lista .sx-card`).forEach(x=>{x.style.display=!q||!x.dataset.b||x.dataset.b.includes(q)?"":"none";});
+}
+function escolherMae(id){
+  const c=_maeCtx;if(!c)return;
+  document.getElementById(c.p+"_mae").value=id||"";
+  document.getElementById(c.p+"_mae_sel").innerHTML=htmlMaeEscolhida(id);
+  document.getElementById(c.p+"_mae_painel").style.display="none";
+}
+
 async function formNovoAnimal(loteFixo,nascimento){
   if(!(await podeUsarApp(nascimento?"Registrar nascimento":"Cadastrar animal")))return;
   _animalFoto="";
@@ -198,9 +250,6 @@ async function formNovoAnimal(loteFixo,nascimento){
   if(lotes.length===0){fechar();return alert("Crie um lote primeiro.");}
   const optLotes=`<option value="" ${loteFixo?"":"selected"}>— selecione —</option>`+lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);
     return`<option value="${l.id}" ${l.id===loteFixo?"selected":""}>${esc(l.nome)}${p?` — ${esc(p.nome)}`:""}</option>`;}).join("");
-  const femeas=animais.filter(a=>a.sexo==="F").sort((x,y)=>(x.codigo||0)-(y.codigo||0));
-  const optMae=`<option value="">— nenhuma —</option>`+
-    femeas.map(m=>`<option value="${m.id}">${esc(rotuloCod(m))}</option>`).join("");
   const optMarca=`<option value="">— selecione —</option>`+
     marcas.map(m=>`<option value="${m.id}">${esc(m.sigla)}${m.nome?` · ${esc(m.nome)}`:""}</option>`).join("");
   // no fluxo de nascimento, já é nascido na propriedade (sem toggle)
@@ -221,13 +270,13 @@ async function formNovoAnimal(loteFixo,nascimento){
     <div class="meta" style="text-align:center;margin:-4px 0 10px">Foto do animal (opcional)</div>
     <label>Brinco / identificação (único)</label><input id="a_brinco" placeholder="Opcional">
     <label>Nome (opcional)</label><input id="a_nome">
-    <label>Sexo *</label><select id="a_sexo"><option value="F">Fêmea</option><option value="M">Macho</option></select>
+    <label>Sexo *</label><select id="a_sexo"><option value="" selected>— selecione —</option><option value="F">Fêmea</option><option value="M">Macho</option></select>
     ${campoRaca("a","",true)}
     ${toggle}
     <div id="grp_nasc" style="display:${nascimento?"block":"none"}">
       <label>Data de nascimento</label><input id="a_nasc" type="date" value="${hoje()}" max="${hoje()}">
       <label>Peso ao nascer (kg) — opcional</label><input id="a_pesonasc" inputmode="decimal" placeholder="Ex: 32 — usado no GMD">
-      <label>Mãe (opcional)</label><select id="a_mae">${optMae}</select>
+      ${campoMae("a",animais,lotes,null)}
     </div>
     <div id="grp_compra" style="display:${nascimento?"none":"block"}">
       <label>Peso de compra (kg vivo)</label><input id="a_pesocompra" inputmode="decimal" placeholder="Ex: 180">
@@ -247,6 +296,7 @@ async function salvarAnimal(nascimento){
   const maeId = nasceu ? (val("a_mae")||null) : null;
   const marcaId = val("a_marca")||null;
   const brinco = val("a_brinco");
+  if(!val("a_sexo"))return alert("Selecione o sexo do animal (Fêmea ou Macho).");
   if(!marcaId)return alert("Selecione a marca / dono do animal.");
   if(!val("a_lote"))return alert("Selecione o lote do animal.");
   const _rc=lerRaca("a",true);if(_rc.erro)return alert(_rc.erro);
@@ -357,9 +407,6 @@ async function formEditarAnimal(id){
   const {propriedades,marcas,lotes,animais}=await tudo();
   const optLotes=lotes.map(l=>{const p=propriedades.find(x=>x.id===l.propriedadeId);
     return`<option value="${l.id}" ${l.id===a.loteAtualId?"selected":""}>${esc(l.nome)}${p?` — ${esc(p.nome)}`:""}</option>`;}).join("");
-  const femeas=animais.filter(x=>x.sexo==="F"&&x.id!==id).sort((x,y)=>(x.codigo||0)-(y.codigo||0));
-  const optMae=`<option value="">— nenhuma —</option>`+
-    femeas.map(m=>`<option value="${m.id}" ${m.id===a.maeId?"selected":""}>${esc(rotuloCod(m))}</option>`).join("");
   const optMarca=`<option value="">— sem marca —</option>`+
     marcas.map(m=>`<option value="${m.id}" ${m.id===a.marcaId?"selected":""}>${esc(m.sigla)}${m.nome?` · ${esc(m.nome)}`:""}</option>`).join("");
   const nasceu = a.nascidoNaPropriedade===true;
@@ -385,7 +432,7 @@ async function formEditarAnimal(id){
     <div id="grp_nasc_e" style="display:${nasceu?"block":"none"}">
       <label>Data de nascimento</label><input id="e_nasc" type="date" value="${a.dataNascimento||hoje()}" max="${hoje()}">
       <label>Peso ao nascer (kg) — opcional</label><input id="e_pesonasc" inputmode="decimal" value="${a.pesoNascimentoKg!=null?String(a.pesoNascimentoKg).replace('.',','):""}" placeholder="Ex: 32">
-      <label>Mãe (opcional)</label><select id="e_mae">${optMae}</select>
+      ${campoMae("e",animais.filter(x=>x.id!==id),lotes,a.maeId)}
     </div>
     <div id="grp_compra_e" style="display:${nasceu?"none":"block"}">
       <label>Data da compra (aquisição)</label><input id="e_datacompra" type="date" value="${dataAquisicao(a)||hoje()}">

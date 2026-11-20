@@ -556,3 +556,13 @@
 .sx-foto{flex:0 0 auto;width:54px;display:flex;flex-direction:column;align-items:center;gap:3px}
 .sx-foto small{font-size:10.5px;color:var(--muted);max-width:54px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sx-foto-mais{height:40px;justify-content:center;font-weight:800;color:var(--verde-esc)}
+
+/* ======================= Escolha da mãe pela foto (V181) — js/app/13-grupos-pastos-cadastros.js ======================= */
+.mae-sel{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1.5px solid var(--linha);border-radius:14px;background:#fff;cursor:pointer;min-height:52px}
+.mae-sel .an-thumb{flex:0 0 auto}
+.mae-sel-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.mae-sel-txt b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mae-sel-acao{color:var(--verde);font-size:14px}
+.mae-painel{margin-top:8px;padding:10px;border:1px solid var(--linha);border-radius:14px;background:#f7faf8}
+.mae-painel input[type=search]{margin:0 0 8px}
+.mae-cards{max-height:46vh}

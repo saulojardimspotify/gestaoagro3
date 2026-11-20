@@ -12,6 +12,7 @@ NODE_PATH=$(npm root -g) node testes/sincronizacao_dois_aparelhos.js
 NODE_PATH=$(npm root -g) node testes/navegacao_voltar.js
 NODE_PATH=$(npm root -g) node testes/animais_servico.js
 NODE_PATH=$(npm root -g) node testes/venda_selecao_fotos.js
+NODE_PATH=$(npm root -g) node testes/escolha_mae.js
 ```
 
 `sincronizacao_dois_aparelhos.js` abre dois "aparelhos" com o mesmo usuário e um Supabase simulado em
@@ -28,3 +29,7 @@ volta ao estoque e estorno, relatório por categoria e as telas sem NaN/undefine
 `venda_selecao_fotos.js` (V179) confere a venda escolhendo os animais pela foto: cartões com foto, busca e
 contador em Venda › Selecionar animais, miniaturas nos dados da venda, venda direto da seleção da página do
 lote (volta para o lote), lançamentos/partidas e os outros modos de venda.
+
+`escolha_mae.js` (V181) confere a escolha da mãe pela foto: só fêmeas ativas com 12 meses ou mais (sem vendidas,
+mortas, machos e bezerras), busca, gravação no nascimento e na edição (mãe já gravada continua aparecendo) e o
+sexo obrigatório no cadastro.
