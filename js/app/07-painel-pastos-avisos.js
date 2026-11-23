@@ -120,7 +120,9 @@ function periodosPasto(pt){
   const aberto={status:pt.status||"Livre",inicio:pt.statusDesde||pt.criadoEm||Date.now(),fim:null,loteId:pt.loteId||null};
   return [...hist,aberto];
 }
-// Soma de dias por situação
+// Dias na situação ATUAL (desde a última troca) — é o que o cartão do pasto mostra (V184)
+const diasSituacaoAtual=pt=>diasEntre(pt.statusDesde||pt.criadoEm||Date.now(),null);
+// Soma de dias por situação em toda a história do pasto (mostrada no histórico como "no total")
 function resumoPasto(pt){
   const d={Descanso:0,Ocupado:0,Livre:0};
   for(const p of periodosPasto(pt))d[p.status]=(d[p.status]||0)+diasEntre(p.inicio,p.fim);
@@ -256,9 +258,9 @@ async function telaGestaoPasto(){
   const contaLote=lid=>animais.filter(a=>a.loteAtualId===lid&&a.status==="Ativo").length;
   const cardPasto=pt=>{
     const n=(pt.status==="Ocupado"&&pt.loteId)?contaLote(pt.loteId):0;
-    const r=resumoPasto(pt);
-    const diasLinha=pt.status==="Ocupado"?`🐄 ${r.Ocupado} dia(s) ocupado`
-      :pt.status==="Descanso"?`🌿 ${r.Descanso} dia(s) reservado`:"";
+    const d=diasSituacaoAtual(pt);
+    const diasLinha=pt.status==="Ocupado"?(d?`🐄 ${d} dia(s) ocupado`:"🐄 Entrou hoje")
+      :pt.status==="Descanso"?(d?`🌿 ${d} dia(s) reservado`:"🌿 Em descanso desde hoje"):"";
     const ctrl=_editPastos?`<div style="white-space:nowrap"><button class="btn-fant" style="padding:4px 8px;color:var(--verde)" onclick="formEditarPasto('${pt.id}')">✎</button>
         <button class="btn-fant" style="padding:4px 8px;color:var(--perigo)" onclick="excluirPastoLista('${pt.id}')">✕</button></div>`:"";
     return `<div class="card">
@@ -394,9 +396,10 @@ async function verPasto(id){
     <div class="card"><div class="ti" style="font-size:19px">🌱 ${esc(pt.nome)}</div>
       <div class="meta">${esc(nomeProp(pt.propriedadeId))}${[pt.areaHa!=null?" · "+alqTxt(pt.areaHa):"",pt.tipoCapim?" · "+esc(pt.tipoCapim):""].join("")}</div>
       <div class="meta" style="margin-top:8px">${pastoStatusChip(pt)}${pt.status==="Ocupado"&&pt.loteId?`<span class="chip chip-lote">▦ ${esc(nomeLote(pt.loteId))}</span>`:""}</div></div>
+    ${pt.status==="Ocupado"||pt.status==="Descanso"?`<div class="meta" style="margin:0 4px 10px">Situação atual: <b>${pt.status==="Ocupado"?"ocupado":"em descanso"} há ${diasSituacaoAtual(pt)} dia(s)</b> (desde ${fmt(tsData(pt.statusDesde||pt.criadoEm||Date.now()))})</div>`:""}
     <div class="grid">
-      <div class="card" style="text-align:center"><div style="font-size:30px;font-weight:800;color:var(--verde)">${r.Descanso}</div><div class="meta">dia(s) reservado<br>(em descanso)</div></div>
-      <div class="card" style="text-align:center"><div style="font-size:30px;font-weight:800;color:var(--verde-esc)">${r.Ocupado}</div><div class="meta">dia(s) ocupado</div></div>
+      <div class="card" style="text-align:center"><div style="font-size:30px;font-weight:800;color:var(--verde)">${r.Descanso}</div><div class="meta">dia(s) reservado<br>no total (em descanso)</div></div>
+      <div class="card" style="text-align:center"><div style="font-size:30px;font-weight:800;color:var(--verde-esc)">${r.Ocupado}</div><div class="meta">dia(s) ocupado<br>no total</div></div>
     </div>
     <button class="btn btn-sec" onclick="formEventoPasto('${id}')">+ Registrar evento no pasto</button>
     <div class="h3">Histórico</div>
